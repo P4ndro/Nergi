@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface SoilData {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [soilData] = useState<SoilData>({
@@ -93,13 +95,13 @@ const Dashboard = () => {
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <p className="text-sm text-muted-foreground">Welcome, {profile?.name}</p>
+          <p className="text-sm text-muted-foreground">{t('welcome')}, {profile?.name}</p>
         </div>
         {/* Location Badge */}
         <div className="mb-6 flex items-center gap-2">
           <MapPin className="w-5 h-5 text-primary" />
-          <span className="font-medium">{profile?.location_region || "Location set"}</span>
-          <Badge variant="secondary" className="ml-2">Active</Badge>
+          <span className="font-medium">{profile?.location_region || t('location_set')}</span>
+          <Badge variant="secondary" className="ml-2">{t('active')}</Badge>
         </div>
 
         {/* Quick Actions */}
@@ -108,7 +110,7 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-primary" />
-                Add Crop
+                {t('add_crop')}
               </CardTitle>
               <CardDescription>
                 Plan a new crop or record a planted one
@@ -120,7 +122,7 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Leaf className="w-5 h-5 text-success" />
-                My Crops
+                {t('my_crops')}
               </CardTitle>
               <CardDescription>
                 View and manage your crops
@@ -128,7 +130,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">0</p>
-              <p className="text-sm text-muted-foreground">Active crops</p>
+              <p className="text-sm text-muted-foreground">{t('active_crops')}</p>
             </CardContent>
           </Card>
 
@@ -136,7 +138,7 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-warning" />
-                Alerts
+                {t('alerts')}
               </CardTitle>
               <CardDescription>
                 Current warnings and recommendations
@@ -144,7 +146,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">0</p>
-              <p className="text-sm text-muted-foreground">Active alerts</p>
+              <p className="text-sm text-muted-foreground">{t('active_alerts')}</p>
             </CardContent>
           </Card>
         </div>
@@ -154,30 +156,30 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
-              Soil Status - {profile?.location_region}
+              {t('soil_status')} - {profile?.location_region}
             </CardTitle>
             <CardDescription>
-              Current soil conditions at your location
+              {t('soil_current_conditions')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">pH Level</p>
+                <p className="text-sm font-medium text-muted-foreground">pH</p>
                 <p className="text-2xl font-bold">{soilData.pH}</p>
                 <Badge variant="secondary">Good</Badge>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Nitrogen</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('nitrogen')}</p>
                 <p className="text-2xl font-bold">{soilData.nitrogen}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Phosphorus</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('phosphorus')}</p>
                 <p className="text-2xl font-bold">{soilData.phosphorus}</p>
                 <Badge variant="destructive">Low</Badge>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Potassium</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('potassium')}</p>
                 <p className="text-2xl font-bold">{soilData.potassium}</p>
               </div>
               <div className="space-y-1">
@@ -193,9 +195,9 @@ const Dashboard = () => {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-medium">Recommendation</p>
+                  <p className="font-medium">{t('recommendation')}</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Phosphorus levels are low. Consider adding organic compost or bone meal before planting phosphorus-demanding crops.
+                    {t('phosphorus_low_message')}
                   </p>
                 </div>
               </div>
@@ -208,15 +210,15 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-warning">
               <AlertTriangle className="w-5 h-5" />
-              Weather Alert
+              {t('weather_alert')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm">
-              <span className="font-medium">Moderate fungal risk:</span> High humidity (78% avg) and recent rainfall increase fungal disease risk. Monitor plants closely and ensure good air circulation.
+              <span className="font-medium">{t('fungal_risk_moderate')}</span> {t('weather_risk_copy')}
             </p>
             <Button variant="outline" size="sm" className="mt-4">
-              View Details
+              {t('view_details')}
             </Button>
           </CardContent>
         </Card>

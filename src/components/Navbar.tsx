@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Leaf, CircleUserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTranslation } from "react-i18next";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Check auth state
@@ -44,10 +47,13 @@ const Navbar = () => {
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
             <Leaf className="w-6 h-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-primary">Nergi</h1>
+          <h1 className="text-2xl font-bold text-primary">{t('brand')}</h1>
         </button>
         
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <div className="hidden md:block">
+            <LanguageSwitcher />
+          </div>
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -59,26 +65,21 @@ const Navbar = () => {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                  Dashboard
+                  {t('dashboard')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/add-crop")}>
-                  Add Crop
+                  {t('add_crop')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
-                  Sign Out
+                  {t('sign_out')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <>
-              <Button variant="ghost" onClick={() => navigate("/auth")}>
-                Sign In
-              </Button>
-              <Button onClick={() => navigate("/auth")}>
-                Get Started
-              </Button>
-            </>
+            <Button onClick={() => navigate("/auth")}>
+              {t('cta_get_started')}
+            </Button>
           )}
         </div>
       </div>
