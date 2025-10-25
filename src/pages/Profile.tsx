@@ -21,9 +21,24 @@ interface Profile {
   soil_analysis_uploaded_at: string | null;
 }
 
+interface SoilReport {
+  id: string;
+  location: string | null;
+  sampled_at: string | null;
+  crop: string | null;
+  ph: number | null;
+  nitrogen: number | null;
+  phosphorus: number | null;
+  potassium: number | null;
+  organic_matter: number | null;
+  electrical_conductivity: number | null;
+  created_at: string;
+}
+
 const Profile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [soilReports, setSoilReports] = useState<SoilReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -51,6 +66,18 @@ const Profile = () => {
       if (error) throw error;
       setProfile(data);
       setName(data.name || "");
+      
+      // Load soil reports
+      const { data: reports, error: reportsError } = await supabase
+        .from('soil_reports' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (!reportsError && reports) {
+        setSoilReports(reports as SoilReport[]);
+      }
     } catch (error: any) {
       console.error("Error loading profile:", error);
       toast.error("Failed to load profile");
@@ -64,33 +91,56 @@ const Profile = () => {
     setUploadedFile(file);
     
     try {
-      const result = await uploadAndExtractFile(file, (progress) => {
-        setUploadProgress(progress);
-      });
+      // Simulate progress
+      setUploadProgress(20);
       
-      // Save to profile
+      // Parse PDF using Edge Function
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('location', profile?.location_region || 'Unknown');
+      formData.append('crop', ''); // Can be set from user input later
+      
+      const { data: parseResult, error: parseError } = await supabase.functions.invoke(
+        'parse-soil-pdf',
+        {
+          body: formData
+        }
+      );
+      
+      if (parseError) throw parseError;
+      
+      setUploadProgress(60);
+      
+      // Save to soil_reports table
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       
-      const updateData: any = {
-        soil_analysis_text: result.extractedText,
-        soil_analysis_file_name: result.fileName,
-        soil_analysis_uploaded_at: new Date().toISOString()
-      };
+      const { error: dbError } = await supabase
+        .from('soil_reports' as any)
+        .insert({
+          user_id: user.id,
+          location: profile?.location_region || 'Unknown',
+          crop: null,
+          pdf_text: parseResult.pdf_text,
+          ph: parseResult.parsed.ph,
+          nitrogen: parseResult.parsed.nitrogen,
+          phosphorus: parseResult.parsed.phosphorus,
+          potassium: parseResult.parsed.potassium,
+          organic_matter: parseResult.parsed.organic_matter,
+          electrical_conductivity: parseResult.parsed.electrical_conductivity
+        });
       
-      const { error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', user.id);
+      setUploadProgress(100);
       
-      if (error) {
-        console.error("Database update error:", error);
-        throw new Error(error.message || "Failed to save to database. Please check if the migration was run.");
+      if (dbError) {
+        console.error("Database error:", dbError);
+        throw new Error(`Failed to save to database: ${dbError.message}`);
       }
       
-      toast.success(`Soil analysis uploaded successfully!`);
+      toast.success(`Soil analysis uploaded and parsed successfully!`);
       loadProfile(); // Reload profile to show updated data
     } catch (error: any) {
+      console.error("Upload error:", error);
       toast.error(error.message || "Failed to upload soil analysis");
       setUploadedFile(null);
     } finally {

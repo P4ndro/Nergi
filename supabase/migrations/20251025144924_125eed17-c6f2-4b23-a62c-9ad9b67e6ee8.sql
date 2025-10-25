@@ -12,6 +12,11 @@ CREATE TABLE public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- Add soil analysis columns to profiles table
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS soil_analysis_text TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS soil_analysis_file_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS soil_analysis_uploaded_at TIMESTAMP WITH TIME ZONE;
+
 CREATE POLICY "Users can view their own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
