@@ -30,6 +30,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cropCount, setCropCount] = useState(0);
   const [soilData] = useState<SoilData>({
     pH: 6.2,
     nitrogen: "Medium",
@@ -40,6 +41,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadProfile();
+    loadCropCount();
   }, []);
 
   const loadProfile = async () => {
@@ -64,6 +66,24 @@ const Dashboard = () => {
       toast.error("Failed to load profile");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCropCount = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const { count, error } = await supabase
+        .from('user_crops')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setCropCount(count || 0);
+    } catch (error: any) {
+      console.error("Error loading crop count:", error);
     }
   };
 
@@ -116,7 +136,10 @@ const Dashboard = () => {
             </CardHeader>
           </Card>
 
-          <Card>
+          <Card 
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigate("/my-crops")}
+          >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Leaf className="w-5 h-5 text-success" />
@@ -127,7 +150,7 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">0</p>
+              <p className="text-3xl font-bold">{cropCount}</p>
               <p className="text-sm text-muted-foreground">Active crops</p>
             </CardContent>
           </Card>

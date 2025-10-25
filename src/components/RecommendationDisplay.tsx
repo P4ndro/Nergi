@@ -1,7 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertTriangle, XCircle, Calendar, Beaker } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Beaker } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { useMemo } from "react";
+import { addDays } from "date-fns";
 
 interface Risk {
   type: string;
@@ -28,6 +31,35 @@ interface RecommendationProps {
 }
 
 const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
+  // Get medicine dates from the calendar
+  const medicineDates = useMemo(() => {
+    const dates: Date[] = [];
+    const today = new Date();
+    
+    if (recommendation.calendar && recommendation.calendar.length > 0) {
+      recommendation.calendar.forEach((week) => {
+        week.tasks.forEach((task) => {
+          // Check if task involves medicine, pesticide, or spray
+          const lowerTask = task.toLowerCase();
+          if (
+            lowerTask.includes("spray") ||
+            lowerTask.includes("pesticide") ||
+            lowerTask.includes("fungicide") ||
+            lowerTask.includes("medicine") ||
+            lowerTask.includes("apply") ||
+            lowerTask.includes("chemical")
+          ) {
+            // Calculate approximate date: week 1 = +7 days, week 2 = +14 days, etc.
+            const daysToAdd = (week.week - 1) * 7 + 3; // Mid-week
+            dates.push(addDays(today, daysToAdd));
+          }
+        });
+      });
+    }
+    
+    return dates;
+  }, [recommendation.calendar]);
+
   const getVerdictIcon = () => {
     switch (recommendation.verdict) {
       case "Plantable":
@@ -120,30 +152,64 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
         </Card>
       )}
 
-      {/* 4-Week Calendar */}
+      {/* Calendar with Medicine Dates */}
       {recommendation.calendar && recommendation.calendar.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              4-Week Starter Plan
-            </CardTitle>
-            <CardDescription>Week-by-week tasks</CardDescription>
+            <CardTitle>Task Calendar</CardTitle>
+            <CardDescription>
+              Green dates indicate medicine/pesticide application days
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recommendation.calendar.map((week) => (
-                <div key={week.week} className="border-l-2 border-primary pl-4">
-                  <p className="font-semibold mb-2">Week {week.week}</p>
-                  <ul className="space-y-1">
-                    {week.tasks.map((task, idx) => (
-                      <li key={idx} className="text-sm text-muted-foreground">
-                        • {task}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                <div className="w-4 h-4 rounded bg-green-500"></div>
+                <span>Medicine/Pesticide Application Dates</span>
+              </div>
+              
+              <Calendar
+                mode="single"
+                className="rounded-md border"
+                classNames={{
+                  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+                }}
+                modifiers={{
+                  medicineDays: medicineDates,
+                }}
+                modifiersClassNames={{
+                  medicineDays: "bg-green-500 text-white hover:bg-green-600 focus:bg-green-600",
+                }}
+              />
+
+              {/* Task List by Week */}
+              <div className="mt-6 space-y-4">
+                <h3 className="font-semibold text-sm">Upcoming Tasks by Week</h3>
+                {recommendation.calendar.map((week) => (
+                  <div key={week.week} className="border-l-2 border-primary pl-4">
+                    <p className="font-semibold mb-2">Week {week.week}</p>
+                    <ul className="space-y-1">
+                      {week.tasks.map((task, idx) => {
+                        const isMedicineTask = task.toLowerCase().includes("spray") ||
+                          task.toLowerCase().includes("pesticide") ||
+                          task.toLowerCase().includes("fungicide") ||
+                          task.toLowerCase().includes("medicine") ||
+                          task.toLowerCase().includes("apply") ||
+                          task.toLowerCase().includes("chemical");
+                        return (
+                          <li
+                            key={idx}
+                            className={`text-sm ${isMedicineTask ? "text-green-600 font-medium" : "text-muted-foreground"}`}
+                          >
+                            • {task}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
