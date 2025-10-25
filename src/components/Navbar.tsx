@@ -51,8 +51,8 @@ const Navbar = () => {
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <CircleUserRound className="w-6 h-6 text-primary" />
+                <Button variant="ghost" size="icon" className="rounded-full h-12 w-12">
+                  <CircleUserRound className="w-8 h-8 text-primary" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
