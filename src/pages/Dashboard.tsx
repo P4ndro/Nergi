@@ -9,6 +9,7 @@ import { Leaf, MapPin, Plus, AlertTriangle, TrendingUp, Droplets } from "lucide-
 import { toast } from "sonner";
 import LocationPermission from "@/components/LocationPermission";
 import Navbar from "@/components/Navbar";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Profile {
   id: string;
@@ -17,17 +18,19 @@ interface Profile {
   location_lon: number | null;
   location_region: string | null;
   location_consent_given: boolean;
-  soil_report_data?: {
-    pH?: number | null;
-    N_ppm?: number | null;
-    P_ppm?: number | null;
-    K_ppm?: number | null;
-    OM_percent?: number | null;
-    EC?: number | null;
-    notes?: string | null;
-  } | null;
+  soil_report_data?: Json | null;
   soil_report_date?: string | null;
   soil_report_location?: string | null;
+}
+
+interface SoilReportData {
+  pH?: number | null;
+  N_ppm?: number | null;
+  P_ppm?: number | null;
+  K_ppm?: number | null;
+  OM_percent?: number | null;
+  EC?: number | null;
+  notes?: string | null;
 }
 
 const Dashboard = () => {
@@ -171,88 +174,91 @@ const Dashboard = () => {
         </div>
 
         {/* Soil Status - Only show if user has uploaded a soil report */}
-        {profile?.soil_report_data && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Soil Status - {profile?.location_region}
-              </CardTitle>
-              <CardDescription>
-                From your soil report {profile.soil_report_location && `(${profile.soil_report_location})`}
-                {profile.soil_report_date && ` - ${new Date(profile.soil_report_date).toLocaleDateString()}`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                {/* pH Level */}
-                {profile.soil_report_data.pH && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">pH Level</p>
-                    <p className="text-2xl font-bold">{profile.soil_report_data.pH.toFixed(1)}</p>
-                    <Badge variant={
-                      profile.soil_report_data.pH >= 6.0 && profile.soil_report_data.pH <= 7.0 
-                        ? "secondary" 
-                        : "outline"
-                    }>
-                      {profile.soil_report_data.pH >= 6.0 && profile.soil_report_data.pH <= 7.0 ? "Good" : "Check"}
-                    </Badge>
-                  </div>
-                )}
+        {profile?.soil_report_data && (() => {
+          const soilData = profile.soil_report_data as SoilReportData;
+          return (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Soil Status - {profile?.location_region}
+                </CardTitle>
+                <CardDescription>
+                  From your soil report {profile.soil_report_location && `(${profile.soil_report_location})`}
+                  {profile.soil_report_date && ` - ${new Date(profile.soil_report_date).toLocaleDateString()}`}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                  {/* pH Level */}
+                  {soilData.pH && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">pH Level</p>
+                      <p className="text-2xl font-bold">{soilData.pH.toFixed(1)}</p>
+                      <Badge variant={
+                        soilData.pH >= 6.0 && soilData.pH <= 7.0 
+                          ? "secondary" 
+                          : "outline"
+                      }>
+                        {soilData.pH >= 6.0 && soilData.pH <= 7.0 ? "Good" : "Check"}
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {/* Nitrogen */}
+                  {soilData.N_ppm !== null && soilData.N_ppm !== undefined && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Nitrogen</p>
+                      <p className="text-2xl font-bold">{soilData.N_ppm}</p>
+                      <p className="text-xs text-muted-foreground">ppm</p>
+                    </div>
+                  )}
+                  
+                  {/* Phosphorus */}
+                  {soilData.P_ppm !== null && soilData.P_ppm !== undefined && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Phosphorus</p>
+                      <p className="text-2xl font-bold">{soilData.P_ppm}</p>
+                      <p className="text-xs text-muted-foreground">ppm</p>
+                    </div>
+                  )}
+                  
+                  {/* Potassium */}
+                  {soilData.K_ppm !== null && soilData.K_ppm !== undefined && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Potassium</p>
+                      <p className="text-2xl font-bold">{soilData.K_ppm}</p>
+                      <p className="text-xs text-muted-foreground">ppm</p>
+                    </div>
+                  )}
+                  
+                  {/* Organic Matter */}
+                  {soilData.OM_percent !== null && soilData.OM_percent !== undefined && (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Organic Matter</p>
+                      <p className="text-2xl font-bold">{soilData.OM_percent}%</p>
+                    </div>
+                  )}
+                </div>
                 
-                {/* Nitrogen */}
-                {profile.soil_report_data.N_ppm !== null && profile.soil_report_data.N_ppm !== undefined && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Nitrogen</p>
-                    <p className="text-2xl font-bold">{profile.soil_report_data.N_ppm}</p>
-                    <p className="text-xs text-muted-foreground">ppm</p>
-                  </div>
-                )}
-                
-                {/* Phosphorus */}
-                {profile.soil_report_data.P_ppm !== null && profile.soil_report_data.P_ppm !== undefined && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Phosphorus</p>
-                    <p className="text-2xl font-bold">{profile.soil_report_data.P_ppm}</p>
-                    <p className="text-xs text-muted-foreground">ppm</p>
-                  </div>
-                )}
-                
-                {/* Potassium */}
-                {profile.soil_report_data.K_ppm !== null && profile.soil_report_data.K_ppm !== undefined && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Potassium</p>
-                    <p className="text-2xl font-bold">{profile.soil_report_data.K_ppm}</p>
-                    <p className="text-xs text-muted-foreground">ppm</p>
-                  </div>
-                )}
-                
-                {/* Organic Matter */}
-                {profile.soil_report_data.OM_percent !== null && profile.soil_report_data.OM_percent !== undefined && (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Organic Matter</p>
-                    <p className="text-2xl font-bold">{profile.soil_report_data.OM_percent}%</p>
-                  </div>
-                )}
-              </div>
-              
-              {/* Notes from soil report if available */}
-              {profile.soil_report_data.notes && (
-                <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <TrendingUp className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium">Analysis Notes</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {profile.soil_report_data.notes}
-                      </p>
+                {/* Notes from soil report if available */}
+                {soilData.notes && (
+                  <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Analysis Notes</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {soilData.notes}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
         
         {/* Placeholder if no soil report uploaded */}
         {!profile?.soil_report_data && (
