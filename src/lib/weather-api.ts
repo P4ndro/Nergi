@@ -4,7 +4,7 @@
  */
 
 const WEATHER_API_KEY = import.meta.env.VITE_WEATHERAPI_KEY;
-const WEATHER_API_BASE_URL = "https://api.weatherapi.com/v1";
+const WEATHER_API_BASE_URL = "https://api.openweathermap.org/data/2.5";
 
 export interface WeatherData {
   currentTemp: number;
@@ -25,52 +25,67 @@ export interface WeatherData {
  * Fetches current weather data for the given location
  */
 export async function fetchWeatherData(lat: number, lon: number): Promise<WeatherData | null> {
-  if (!WEATHER_API_KEY) {
-    console.warn("WeatherAPI key not configured. Using mock data.");
+  console.log("Fetching weather data... API Key configured:", !!WEATHER_API_KEY);
+  
+  if (!WEATHER_API_KEY || WEATHER_API_KEY === 'your_api_key_here') {
+    console.warn("OpenWeatherMap API key not configured. Using mock data.");
     return getMockWeatherData();
   }
 
   try {
-    // Fetch current weather and forecast
-    const response = await fetch(
-      `${WEATHER_API_BASE_URL}/forecast.json?key=${WEATHER_API_KEY}&q=${lat},${lon}&days=7&aqi=no&alerts=no`
-    );
+    // Fetch current weather and 5-day forecast from OpenWeatherMap
+    const currentUrl = `${WEATHER_API_BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`;
+    const forecastUrl = `${WEATHER_API_BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`;
+    
+    console.log("Fetching OpenWeatherMap data...");
+    
+    // Fetch both current weather and forecast
+    const [currentResponse, forecastResponse] = await Promise.all([
+      fetch(currentUrl),
+      fetch(forecastUrl)
+    ]);
 
-    if (!response.ok) {
-      console.error("WeatherAPI request failed:", response.status, response.statusText);
+    if (!currentResponse.ok || !forecastResponse.ok) {
+      if (currentResponse.status === 401 || forecastResponse.status === 401) {
+        console.error("OpenWeatherMap authentication failed. Please check your API key.");
+        console.error("Get your free API key from: https://openweathermap.org/api");
+        return getMockWeatherData();
+      }
+      console.error("OpenWeatherMap request failed");
       return getMockWeatherData();
     }
 
-    const data = await response.json();
+    const currentData = await currentResponse.json();
+    const forecastData = await forecastResponse.json();
 
     // Extract current weather
-    const current = data.current;
-    const currentTemp = current.temp_c;
-    const humidity = current.humidity;
-    const windSpeed = current.wind_mps || current.wind_kph / 3.6; // Convert km/h to m/s
-    const description = current.condition.text;
+    const currentTemp = currentData.main.temp;
+    const humidity = currentData.main.humidity;
+    const windSpeed = currentData.wind?.speed || 0; // Already in m/s
+    const description = currentData.weather[0]?.description || "Clear sky";
 
     // Extract forecast data
-    const forecastData = data.forecast?.forecastday || [];
+    const forecastList = forecastData.list || [];
     
     // Calculate temperature range from forecast
-    const temps = forecastData.map((day: any) => ({
-      min: day.day.mintemp_c,
-      max: day.day.maxtemp_c,
-    }));
-    
-    const tempMin = Math.min(...temps.map((t: any) => t.min));
-    const tempMax = Math.max(...temps.map((t: any) => t.max));
+    const temps = forecastList.map((item: any) => item.main.temp);
+    const tempMin = Math.min(...temps);
+    const tempMax = Math.max(...temps);
 
-    // Calculate total rainfall
-    const totalRainfall = forecastData.reduce((sum: number, day: any) => sum + (day.day.totalprecip_mm || 0), 0);
+    // Calculate total rainfall from forecast
+    const totalRainfall = forecastList.reduce((sum: number, item: any) => 
+      sum + (item.rain?.['3h'] || 0), 0
+    );
 
-    // Format forecast for the next 7 days
-    const forecast = forecastData.map((day: any) => ({
-      date: day.date,
-      temp: day.day.avgtemp_c,
-      condition: day.day.condition.text,
-    }));
+    // Format forecast for the next 7 days (grouped by day)
+    const forecast = forecastList
+      .filter((_: any, i: number) => i % 8 === 0) // Get one forecast per day
+      .slice(0, 7)
+      .map((item: any) => ({
+        date: item.dt_txt.split(' ')[0],
+        temp: item.main.temp,
+        condition: item.weather[0]?.description || "Clear"
+      }));
 
     return {
       currentTemp,

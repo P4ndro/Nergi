@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.walle-chatbot]
 verify_jwt = true
+
+[functions.file-reader]
+verify_jwt = true

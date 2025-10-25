@@ -56,21 +56,24 @@ const Navbar = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/dashboard")}>
-                  Dashboard
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/my-crops")}>
-                  My Crops
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/add-crop")}>
-                  Add Crop
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  Sign Out
-                </DropdownMenuItem>
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/my-crops")}>
+                My Crops
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/add-crop")}>
+                Add Crop
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
+                Profile & Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut}>
+                Sign Out
+              </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

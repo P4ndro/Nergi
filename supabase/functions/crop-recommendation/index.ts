@@ -11,11 +11,11 @@ serve(async (req) => {
   }
 
   try {
-    const { cropData, soilData, weatherData, location } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const { cropData, soilData, weatherData, location, additionalContext } = await req.json();
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const systemPrompt = `You are Nergi, an AI agricultural assistant helping farmers in Georgia. You provide expert advice on crop planting, soil management, and pest control.
@@ -60,6 +60,8 @@ Weather forecast (7-day):
 
 ${cropData.chemicalUse ? `Recent chemical use: ${cropData.chemicalName} applied ${cropData.chemicalDate}` : 'No recent chemical use reported'}
 
+${additionalContext ? `\nAdditional context from uploaded files:\n${additionalContext}` : ''}
+
 Provide:
 1. Suitability verdict: "Plantable", "Caution", or "Not recommended"
 2. Top 3 immediate actions with specific amounts/timings
@@ -85,19 +87,24 @@ Format as JSON:
   "usedFields": ["field1", "field2"]
 }`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Use Gemini API directly via Google AI
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
+        contents: [{
+          parts: [
+            { text: systemPrompt + "\n\n" + userPrompt }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        },
       }),
     });
 
@@ -123,7 +130,7 @@ Format as JSON:
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const content = data.candidates[0].content.parts[0].text;
     
     // Try to parse JSON response
     let recommendation;

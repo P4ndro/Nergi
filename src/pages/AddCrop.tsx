@@ -82,6 +82,9 @@ const AddCrop = () => {
         throw new Error("Failed to fetch weather data");
       }
 
+      // Get stored soil analysis if available (from profile)
+      const storedSoilAnalysis = (profile as any).soil_analysis_text;
+
       const cropData = {
         cropName: selectedCrop,
         variety,
@@ -104,7 +107,13 @@ const AddCrop = () => {
 
       // Call edge function for recommendation
       const { data, error } = await supabase.functions.invoke('crop-recommendation', {
-        body: { cropData, soilData, weatherData, location }
+        body: { 
+          cropData, 
+          soilData, 
+          weatherData, 
+          location,
+          additionalContext: storedSoilAnalysis // Use stored soil analysis from profile
+        }
       });
 
       if (error) throw error;
