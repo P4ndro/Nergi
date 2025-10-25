@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Leaf, MapPin, Plus, AlertTriangle, TrendingUp, Droplets } from "lucide-react";
 import { toast } from "sonner";
 import LocationPermission from "@/components/LocationPermission";
+import Navbar from "@/components/Navbar";
 
 interface Profile {
   id: string;
@@ -88,26 +89,12 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
-      {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <Leaf className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-primary">Nergi</h1>
-              <p className="text-sm text-muted-foreground">Welcome, {profile?.name}</p>
-            </div>
-          </div>
-          
-          <Button variant="outline" onClick={handleSignOut}>
-            Sign Out
-          </Button>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <p className="text-sm text-muted-foreground">Welcome, {profile?.name}</p>
+        </div>
         {/* Location Badge */}
         <div className="mb-6 flex items-center gap-2">
           <MapPin className="w-5 h-5 text-primary" />
