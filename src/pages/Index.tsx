@@ -1,6 +1,4 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Leaf, TrendingUp, MapPin, AlertTriangle, Calendar, Shield } from "lucide-react";
@@ -8,15 +6,6 @@ import Navbar from "@/components/Navbar";
 
 const Index = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Check if user is already logged in and redirect to dashboard
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/dashboard");
-      }
-    });
-  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/10">
