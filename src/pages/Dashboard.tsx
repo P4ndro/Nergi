@@ -253,28 +253,6 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         )}
-                </div>
-              )}
-
-              {/* Call to action if no notes */}
-              {!profile.soil_report_data.notes && (
-                <div className="mt-6 p-4 bg-muted/40 border rounded-lg text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Upload a new soil report when adding crops to keep this data current
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="mt-3"
-                    onClick={() => navigate("/add-crop")}
-                  >
-                    Add Crop with Soil Report
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
         
         {/* Placeholder if no soil report uploaded */}
         {!profile?.soil_report_data && (
