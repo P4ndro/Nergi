@@ -97,7 +97,7 @@ const Navbar = () => {
                   {t("nav.dashboard")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/my-crops")}>
-                  My Crops
+                  {t("nav.myCrops")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/add-crop")}>
                   {t("nav.addCrop")}
