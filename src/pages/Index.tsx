@@ -8,17 +8,8 @@ const Index = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/10 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float-slow" />
-        <div className="absolute top-40 right-20 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float-medium" />
-        <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-success/5 rounded-full blur-3xl animate-float-fast" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10">
-        <Navbar />
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/10">
+      <Navbar />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
@@ -143,13 +134,12 @@ const Index = () => {
         </Card>
       </section>
 
-        {/* Footer */}
-        <footer className="border-t border-border bg-card/50 py-8">
-          <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-            <p>© 2025 Nergi. AI-powered agricultural assistant for Georgian farmers.</p>
-          </div>
-        </footer>
-      </div>
+      {/* Footer */}
+      <footer className="border-t border-border bg-card/50 py-8">
+        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+          <p>© 2025 Nergi. AI-powered agricultural assistant for Georgian farmers.</p>
+        </div>
+      </footer>
     </div>
   );
 };
