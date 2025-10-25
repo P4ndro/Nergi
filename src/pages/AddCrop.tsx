@@ -169,8 +169,8 @@ const AddCrop = () => {
         if (chemError) console.error("Error saving chemical:", chemError);
       }
 
-      toast.success("Crop saved successfully!");
-      navigate("/dashboard");
+      toast.success("Crop saved successfully! View your recommendations below.");
+      navigate("/my-crops?open=true");
     } catch (error: any) {
       console.error("Error saving crop:", error);
       toast.error(error.message || "Failed to save crop");

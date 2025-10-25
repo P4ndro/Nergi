@@ -61,6 +61,9 @@ const Navbar = () => {
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                   Dashboard
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/my-crops")}>
+                  My Crops
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/add-crop")}>
                   Add Crop
                 </DropdownMenuItem>
