@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import CropSearch from "@/components/CropSearch";
 import RecommendationDisplay from "@/components/RecommendationDisplay";
 import Navbar from "@/components/Navbar";
+import { fetchWeatherData } from "@/lib/weather-api";
 
 const AddCrop = () => {
   const navigate = useNavigate();
@@ -63,7 +64,7 @@ const AddCrop = () => {
 
       if (!profile) throw new Error("Profile not found");
 
-      // Mock soil and weather data (in production, fetch from APIs)
+      // Mock soil data (in production, fetch from APIs)
       const soilData = {
         pH: 6.2,
         nitrogen: "Medium",
@@ -73,12 +74,13 @@ const AddCrop = () => {
         moisture: "Adequate"
       };
 
-      const weatherData = {
-        humidity: 78,
-        rainfall: 45,
-        tempMin: 15,
-        tempMax: 28
-      };
+      // Fetch real weather data from WeatherAPI
+      toast.info("Fetching weather data...");
+      const weatherData = await fetchWeatherData(profile.location_lat, profile.location_lon);
+      
+      if (!weatherData) {
+        throw new Error("Failed to fetch weather data");
+      }
 
       const cropData = {
         cropName: selectedCrop,
