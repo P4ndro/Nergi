@@ -310,6 +310,34 @@ const messages: Messages = {
   // NotFound
   "notFound.subtitle": { en: "Oops! Page not found", ka: "სამწუხაროდ, გვერდი ვერ მოიძებნა" },
   "notFound.backHome": { en: "Return to Home", ka: "დაბრუნდეთ მთავარ გვერდზე" },
+
+  // About page
+  "about.title": { en: "About Nergi", ka: "Nergi შესახებ" },
+  "about.subtitle": {
+    en: "We build AI-powered tools that help Georgian farmers make smarter, safer, and more profitable decisions.",
+    ka: "ჩვენ ვქმნით AI ინსტრუმენტებს, რომლებიც ქართულ ფერმერებს ეხმარება მიიღონ უფრო ჭკვიანი, უსაფრთხო და მომგებიანი გადაწყვეტილებები.",
+  },
+  "about.mission.title": { en: "Our Mission", ka: "ჩვენი მისია" },
+  "about.mission.body": {
+    en: "Empower every farmer in Georgia with accessible, data-driven insights—improving yields, protecting soil health, and building resilient communities.",
+    ka: "საქართველოს თითოეული ფერმერის გაძლიერება ხელმისაწვდომი, მონაცემებზე დაფუძნებული ხედვებით—მოსავლიანობის გაუმჯობესება, ნიადაგის ჯანმრთელობის დაცვა და გამძლე თემების შექმნა.",
+  },
+  "about.vision.title": { en: "Our Vision", ka: "ჩვენი ხედვა" },
+  "about.vision.body": {
+    en: "A sustainable agricultural future where technology and tradition work hand-in-hand to feed the nation.",
+    ka: "მდგრადი სოფლის მეურნეობის მომავალი, სადაც ტექნოლოგია და ტრადიცია ხელიხელჩაკიდებული კვებავენ ქვეყანას.",
+  },
+  "about.team.title": { en: "Our Team", ka: "ჩვენი გუნდი" },
+  "about.team.body": {
+    en: "We’re a small, dedicated team of engineers and agronomists passionate about sustainable farming.",
+    ka: "ჩვენ ვართ პატარა, მაგრამ თავდადებული გუნდი—ინჟინრები და აგრონომები, რომლებსაც გული შესტკივათ მდგრად სოფლის მეურნეობაზე.",
+  },
+  "about.team.member1.name": { en: "Ana", ka: "ანა" },
+  "about.team.member1.role": { en: "Agronomist", ka: "აგრონომი" },
+  "about.team.member2.name": { en: "Giorgi", ka: "გიორგი" },
+  "about.team.member2.role": { en: "ML Engineer", ka: "ML ინჟინერი" },
+  "about.team.member3.name": { en: "Nino", ka: "ნინო" },
+  "about.team.member3.role": { en: "Frontend Engineer", ka: "ფრონტენდის ინჟინერი" },
 };
 
 type LocaleContextType = {

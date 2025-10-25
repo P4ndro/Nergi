@@ -10,6 +10,7 @@ import AddCrop from "@/pages/AddCrop";
 import MyCrops from "@/pages/MyCrops";
 import NotFound from "@/pages/NotFound";
 import Pricing from "@/pages/Pricing";
+import About from "./pages/About";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/add-crop" element={<AddCrop />} />
           <Route path="/my-crops" element={<MyCrops />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/about" element={<About />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
