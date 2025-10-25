@@ -16,14 +16,17 @@ interface Profile {
   location_lon: number | null;
   location_region: string | null;
   location_consent_given: boolean;
-}
-
-interface SoilData {
-  pH: number;
-  nitrogen: string;
-  phosphorus: string;
-  potassium: string;
-  moisture: string;
+  soil_report_data?: {
+    pH?: number | null;
+    N_ppm?: number | null;
+    P_ppm?: number | null;
+    K_ppm?: number | null;
+    OM_percent?: number | null;
+    EC?: number | null;
+    notes?: string | null;
+  } | null;
+  soil_report_date?: string | null;
+  soil_report_location?: string | null;
 }
 
 const Dashboard = () => {
@@ -31,13 +34,6 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [cropCount, setCropCount] = useState(0);
-  const [soilData] = useState<SoilData>({
-    pH: 6.2,
-    nitrogen: "Medium",
-    phosphorus: "Low",
-    potassium: "Medium",
-    moisture: "Adequate"
-  });
 
   useEffect(() => {
     loadProfile();
@@ -172,59 +168,123 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Soil Status */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Soil Status - {profile?.location_region}
-            </CardTitle>
-            <CardDescription>
-              Current soil conditions at your location
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">pH Level</p>
-                <p className="text-2xl font-bold">{soilData.pH}</p>
-                <Badge variant="secondary">Good</Badge>
+        {/* Soil Status - Only show if user has uploaded a soil report */}
+        {profile?.soil_report_data && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Soil Status - {profile?.location_region}
+              </CardTitle>
+              <CardDescription>
+                From your soil report {profile.soil_report_location && `(${profile.soil_report_location})`}
+                {profile.soil_report_date && ` - ${new Date(profile.soil_report_date).toLocaleDateString()}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                {/* pH Level */}
+                {profile.soil_report_data.pH && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">pH Level</p>
+                    <p className="text-2xl font-bold">{profile.soil_report_data.pH.toFixed(1)}</p>
+                    <Badge variant={
+                      profile.soil_report_data.pH >= 6.0 && profile.soil_report_data.pH <= 7.0 
+                        ? "secondary" 
+                        : "outline"
+                    }>
+                      {profile.soil_report_data.pH >= 6.0 && profile.soil_report_data.pH <= 7.0 ? "Good" : "Check"}
+                    </Badge>
+                  </div>
+                )}
+                
+                {/* Nitrogen */}
+                {profile.soil_report_data.N_ppm !== null && profile.soil_report_data.N_ppm !== undefined && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Nitrogen</p>
+                    <p className="text-2xl font-bold">{profile.soil_report_data.N_ppm}</p>
+                    <p className="text-xs text-muted-foreground">ppm</p>
+                  </div>
+                )}
+                
+                {/* Phosphorus */}
+                {profile.soil_report_data.P_ppm !== null && profile.soil_report_data.P_ppm !== undefined && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Phosphorus</p>
+                    <p className="text-2xl font-bold">{profile.soil_report_data.P_ppm}</p>
+                    <p className="text-xs text-muted-foreground">ppm</p>
+                  </div>
+                )}
+                
+                {/* Potassium */}
+                {profile.soil_report_data.K_ppm !== null && profile.soil_report_data.K_ppm !== undefined && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Potassium</p>
+                    <p className="text-2xl font-bold">{profile.soil_report_data.K_ppm}</p>
+                    <p className="text-xs text-muted-foreground">ppm</p>
+                  </div>
+                )}
+                
+                {/* Organic Matter */}
+                {profile.soil_report_data.OM_percent !== null && profile.soil_report_data.OM_percent !== undefined && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Organic Matter</p>
+                    <p className="text-2xl font-bold">{profile.soil_report_data.OM_percent}%</p>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Nitrogen</p>
-                <p className="text-2xl font-bold">{soilData.nitrogen}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Phosphorus</p>
-                <p className="text-2xl font-bold">{soilData.phosphorus}</p>
-                <Badge variant="destructive">Low</Badge>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Potassium</p>
-                <p className="text-2xl font-bold">{soilData.potassium}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <Droplets className="w-4 h-4" />
-                  Moisture
-                </p>
-                <p className="text-2xl font-bold">{soilData.moisture}</p>
-              </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-warning/10 border border-warning/20 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Recommendation</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Phosphorus levels are low. Consider adding organic compost or bone meal before planting phosphorus-demanding crops.
-                  </p>
+              
+              {/* Notes from soil report if available */}
+              {profile.soil_report_data.notes && (
+                <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <TrendingUp className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">Analysis Notes</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {profile.soil_report_data.notes}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              )}
+
+              {/* Call to action if no notes */}
+              {!profile.soil_report_data.notes && (
+                <div className="mt-6 p-4 bg-muted/40 border rounded-lg text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Upload a new soil report when adding crops to keep this data current
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3"
+                    onClick={() => navigate("/add-crop")}
+                  >
+                    Add Crop with Soil Report
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Placeholder if no soil report uploaded */}
+        {!profile?.soil_report_data && (
+          <Card className="mb-8 border-dashed">
+            <CardContent className="pt-6 pb-6 text-center">
+              <TrendingUp className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">No Soil Report Yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload a soil lab report when adding a crop to see your soil analysis here
+              </p>
+              <Button onClick={() => navigate("/add-crop")}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Crop with Soil Report
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Weather Warning */}
         <Card className="border-warning/40 bg-warning/5">

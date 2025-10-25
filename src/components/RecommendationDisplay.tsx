@@ -27,6 +27,31 @@ interface RecommendationProps {
     risks: Risk[];
     soilAmendments?: string[];
     usedFields?: string[];
+    soilReportSummary?: {
+      pH?: number | null;
+      EC?: number | null;
+      OM_percent?: number | null;
+      N_ppm?: number | null;
+      P_ppm?: number | null;
+      K_ppm?: number | null;
+      CEC?: number | null;
+      Fe_ppm?: number | null;
+      Zn_ppm?: number | null;
+      Mn_ppm?: number | null;
+      Cu_ppm?: number | null;
+      B_ppm?: number | null;
+      notes?: string | null;
+    } | null;
+    soilReportHuman?: string | null;
+    soilReportDetails?: Array<{
+      name: string;
+      value: number | string | null;
+      unit?: string | null;
+      optimalRange?: string | null;
+      comparison?: string | null;
+      explanation?: string | null;
+    }> | null;
+    soilReportRawExcerpt?: string | null;
   };
 }
 
@@ -97,6 +122,139 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
 
   return (
     <div className="mt-6 space-y-6">
+      {/* ==== SOIL REPORT ANALYSIS FIRST ==== */}
+      {recommendation.soilReportHuman && (
+        <>
+          {/* Main Header for Soil Analysis Section */}
+          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Beaker className="w-6 h-6 text-primary" />
+                Your Soil Report Analysis
+              </CardTitle>
+              <CardDescription className="text-base">
+                AI has read your lab report and extracted all the important details below
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          {/* Human-Readable Summary */}
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                📊 Overall Assessment
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-base leading-7 text-foreground">{recommendation.soilReportHuman}</p>
+            </CardContent>
+          </Card>
+
+          {/* Detailed Parameter-by-Parameter Breakdown */}
+          {recommendation.soilReportDetails && recommendation.soilReportDetails.length > 0 && (
+            <Card className="border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  🔬 Detailed Analysis - Every Parameter Explained
+                </CardTitle>
+                <CardDescription>
+                  What each value in your soil report means for your crops
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recommendation.soilReportDetails.map((row, idx) => (
+                    <div key={idx} className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg text-foreground">{row.name}</h4>
+                          {row.optimalRange && (
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              Optimal range: {row.optimalRange}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right ml-4">
+                          <div className="text-2xl font-bold text-primary">
+                            {row.value}
+                            {row.unit && <span className="text-base font-normal text-muted-foreground ml-1">{row.unit}</span>}
+                          </div>
+                          {row.comparison && (
+                            <p className="text-xs text-muted-foreground mt-1">{row.comparison}</p>
+                          )}
+                        </div>
+                      </div>
+                      {row.explanation && (
+                        <div className="mt-2 pt-2 border-t">
+                          <p className="text-sm leading-6 text-foreground/80">
+                            {row.explanation}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick Reference Summary Grid */}
+          {recommendation.soilReportSummary && (
+            <Card className="border-muted">
+              <CardHeader>
+                <CardTitle className="text-base">Quick Reference - All Values</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {Object.entries(recommendation.soilReportSummary).map(([k, v]) =>
+                    v !== null && v !== undefined && k !== 'notes' ? (
+                      <div key={k} className="p-3 rounded border bg-muted/40">
+                        <p className="text-xs text-muted-foreground mb-1">{k.replace(/_/g, ' ')}</p>
+                        <p className="font-bold text-foreground">{String(v)}</p>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+                {recommendation.soilReportSummary.notes && (
+                  <div className="mt-4 p-3 rounded bg-muted/30 border-l-4 border-primary">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Technical Notes:</p>
+                    <p className="text-xs text-muted-foreground">{recommendation.soilReportSummary.notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Raw Report Excerpt */}
+          {recommendation.soilReportRawExcerpt && (
+            <Card className="border-muted">
+              <CardHeader>
+                <CardTitle className="text-base">Original Report Text</CardTitle>
+                <CardDescription>Raw data from your uploaded file</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground border rounded p-3 bg-muted/20 font-mono">
+                  {recommendation.soilReportRawExcerpt}
+                </pre>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Divider before recommendations */}
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t-2 border-primary/20"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-background px-4 text-sm font-medium text-muted-foreground">
+                📋 Based on this soil analysis, here are your crop recommendations
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ==== CROP RECOMMENDATIONS BELOW ==== */}
       {/* Verdict */}
       <Card className={getVerdictColor()}>
         <CardHeader>
