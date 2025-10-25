@@ -13,9 +13,11 @@ import { toast } from "sonner";
 import CropSearch from "@/components/CropSearch";
 import RecommendationDisplay from "@/components/RecommendationDisplay";
 import Navbar from "@/components/Navbar";
+import { useLocale } from "@/context/LocaleContext";
 
 const AddCrop = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [selectedCrop, setSelectedCrop] = useState<string>("");
   const [variety, setVariety] = useState("");
   const [status, setStatus] = useState<"planned" | "planted">("planned");
@@ -34,17 +36,17 @@ const AddCrop = () => {
 
   const handleGetRecommendation = async () => {
     if (!selectedCrop) {
-      toast.error("Please select a crop first");
+      toast.error(t("addCrop.toast.selectCrop"));
       return;
     }
 
     if (status === "planned" && !plannedDate) {
-      toast.error("Please enter planned planting date");
+      toast.error(t("addCrop.toast.enterPlanned"));
       return;
     }
 
     if (status === "planted" && !plantingDate) {
-      toast.error("Please enter planting date");
+      toast.error(t("addCrop.toast.enterPlanting"));
       return;
     }
 
@@ -108,10 +110,10 @@ const AddCrop = () => {
       if (error) throw error;
 
       setRecommendation(data);
-      toast.success("Recommendation generated!");
+      toast.success(t("addCrop.toast.generated"));
     } catch (error: any) {
       console.error("Error getting recommendation:", error);
-      toast.error(error.message || "Failed to get recommendation");
+      toast.error(error.message || t("addCrop.toast.failGet"));
     } finally {
       setLoading(false);
     }
@@ -119,7 +121,7 @@ const AddCrop = () => {
 
   const handleSaveCrop = async () => {
     if (!selectedCrop || !recommendation) {
-      toast.error("Please get a recommendation first");
+      toast.error(t("addCrop.toast.saveFirst"));
       return;
     }
 
@@ -167,11 +169,11 @@ const AddCrop = () => {
         if (chemError) console.error("Error saving chemical:", chemError);
       }
 
-      toast.success("Crop saved successfully!");
+      toast.success(t("addCrop.toast.saved"));
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error saving crop:", error);
-      toast.error(error.message || "Failed to save crop");
+      toast.error(error.message || t("addCrop.toast.failSave"));
     } finally {
       setLoading(false);
     }
@@ -184,13 +186,13 @@ const AddCrop = () => {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
+          {t("addCrop.back")}
         </Button>
         <Card>
           <CardHeader>
-            <CardTitle>Add Crop</CardTitle>
+            <CardTitle>{t("addCrop.title")}</CardTitle>
             <CardDescription>
-              Search for your crop and provide details to get AI-powered recommendations
+              {t("addCrop.description")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -201,10 +203,10 @@ const AddCrop = () => {
             />
 
             <div className="space-y-2">
-              <Label htmlFor="variety">Variety (optional)</Label>
+              <Label htmlFor="variety">{t("addCrop.variety.label")}</Label>
               <Input
                 id="variety"
-                placeholder="e.g., Golden Bantam"
+                placeholder={t("addCrop.variety.placeholder")}
                 value={variety}
                 onChange={(e) => setVariety(e.target.value)}
               />
@@ -212,18 +214,18 @@ const AddCrop = () => {
 
             {/* Status */}
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>{t("addCrop.status.label")}</Label>
               <RadioGroup value={status} onValueChange={(v: any) => setStatus(v)}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="planned" id="planned" />
                   <Label htmlFor="planned" className="font-normal cursor-pointer">
-                    Planning to plant
+                    {t("addCrop.status.planned")}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="planted" id="planted" />
                   <Label htmlFor="planted" className="font-normal cursor-pointer">
-                    Already planted
+                    {t("addCrop.status.planted")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -232,7 +234,7 @@ const AddCrop = () => {
             {/* Dates */}
             {status === "planned" ? (
               <div className="space-y-2">
-                <Label htmlFor="plannedDate">Planned Planting Date</Label>
+                <Label htmlFor="plannedDate">{t("addCrop.date.planned")}</Label>
                 <Input
                   id="plannedDate"
                   type="date"
@@ -242,7 +244,7 @@ const AddCrop = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="plantingDate">Planting Date</Label>
+                <Label htmlFor="plantingDate">{t("addCrop.date.planting")}</Label>
                 <Input
                   id="plantingDate"
                   type="date"
@@ -255,7 +257,7 @@ const AddCrop = () => {
             {/* Area */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="area">Area</Label>
+                <Label htmlFor="area">{t("addCrop.area.label")}</Label>
                 <Input
                   id="area"
                   type="number"
@@ -266,14 +268,14 @@ const AddCrop = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
+                <Label htmlFor="unit">{t("addCrop.unit.label")}</Label>
                 <Select value={areaUnit} onValueChange={(v: any) => setAreaUnit(v)}>
                   <SelectTrigger id="unit">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="m2">Square meters (m²)</SelectItem>
-                    <SelectItem value="ha">Hectares (ha)</SelectItem>
+                    <SelectItem value="m2">{t("addCrop.unit.m2")}</SelectItem>
+                    <SelectItem value="ha">{t("addCrop.unit.ha")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -281,14 +283,14 @@ const AddCrop = () => {
 
             {/* Planting Method */}
             <div className="space-y-2">
-              <Label htmlFor="method">Planting Method</Label>
+              <Label htmlFor="method">{t("addCrop.method.label")}</Label>
               <Select value={plantingMethod} onValueChange={(v: any) => setPlantingMethod(v)}>
                 <SelectTrigger id="method">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direct_seed">Direct Seed</SelectItem>
-                  <SelectItem value="transplant">Transplant</SelectItem>
+                  <SelectItem value="direct_seed">{t("addCrop.method.direct")}</SelectItem>
+                  <SelectItem value="transplant">{t("addCrop.method.transplant")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -296,10 +298,10 @@ const AddCrop = () => {
             {/* Field Name */}
             {status === "planted" && (
               <div className="space-y-2">
-                <Label htmlFor="fieldName">Field/Location Name (optional)</Label>
+                <Label htmlFor="fieldName">{t("addCrop.field.label")}</Label>
                 <Input
                   id="fieldName"
-                  placeholder="e.g., North Field"
+                  placeholder={t("addCrop.field.placeholder")}
                   value={fieldName}
                   onChange={(e) => setFieldName(e.target.value)}
                 />
@@ -308,18 +310,18 @@ const AddCrop = () => {
 
             {/* Chemical Use */}
             <div className="space-y-2">
-              <Label>Recent chemical/pesticide use?</Label>
+              <Label>{t("addCrop.chem.label")}</Label>
               <RadioGroup value={chemicalUse} onValueChange={(v: any) => setChemicalUse(v)}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="no" id="chem-no" />
                   <Label htmlFor="chem-no" className="font-normal cursor-pointer">
-                    No
+                    {t("addCrop.chem.no")}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes" id="chem-yes" />
                   <Label htmlFor="chem-yes" className="font-normal cursor-pointer">
-                    Yes
+                    {t("addCrop.chem.yes")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -328,16 +330,16 @@ const AddCrop = () => {
             {chemicalUse === "yes" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="chemName">Chemical/Pesticide Name</Label>
+                  <Label htmlFor="chemName">{t("addCrop.chem.name")}</Label>
                   <Input
                     id="chemName"
-                    placeholder="Product name"
+                    placeholder={t("addCrop.chem.name.placeholder")}
                     value={chemicalName}
                     onChange={(e) => setChemicalName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="chemDate">Application Date</Label>
+                  <Label htmlFor="chemDate">{t("addCrop.chem.date")}</Label>
                   <Input
                     id="chemDate"
                     type="date"
@@ -350,10 +352,10 @@ const AddCrop = () => {
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes (optional)</Label>
+              <Label htmlFor="notes">{t("addCrop.notes.label")}</Label>
               <Textarea
                 id="notes"
-                placeholder="Any additional information..."
+                placeholder={t("addCrop.notes.placeholder")}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
@@ -371,10 +373,10 @@ const AddCrop = () => {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing...
+                    {t("addCrop.cta.analyzing")}
                   </>
                 ) : (
-                  "Get Recommendation"
+                  t("addCrop.cta.recommend")
                 )}
               </Button>
               
@@ -385,7 +387,7 @@ const AddCrop = () => {
                   variant="default"
                   size="lg"
                 >
-                  Save Crop
+                  {t("addCrop.cta.save")}
                 </Button>
               )}
             </div>
