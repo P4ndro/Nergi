@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import CropSearch from "@/components/CropSearch";
 import RecommendationDisplay from "@/components/RecommendationDisplay";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { useLocale } from "@/context/LocaleContext";
 
 const AddCrop = () => {
@@ -363,7 +364,7 @@ const AddCrop = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 onClick={handleGetRecommendation}
                 disabled={loading || !selectedCrop}
@@ -381,14 +382,17 @@ const AddCrop = () => {
               </Button>
               
               {recommendation && (
-                <Button
-                  onClick={handleSaveCrop}
-                  disabled={loading}
-                  variant="default"
-                  size="lg"
-                >
-                  {t("addCrop.cta.save")}
-                </Button>
+                <>
+                  <div className="hidden sm:block h-8 w-px bg-border" />
+                  <Button
+                    onClick={handleSaveCrop}
+                    disabled={loading}
+                    variant="default"
+                    size="lg"
+                  >
+                    {t("addCrop.cta.save")}
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>
@@ -399,6 +403,7 @@ const AddCrop = () => {
           <RecommendationDisplay recommendation={recommendation} />
         )}
       </main>
+      <Footer />
     </div>
   );
 };

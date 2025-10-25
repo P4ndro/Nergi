@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Leaf, TrendingUp, MapPin, AlertTriangle, Calendar, Shield, CheckCircle } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -31,36 +32,33 @@ const Index = () => {
             <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Leaf className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 -translate-y-[5px] bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               {t("hero.title")}
             </h2>
-            <p className="text-base md:text-lg text-muted-foreground mb-6 leading-relaxed">
+            <p className="text-sm md:text-base text-muted-foreground mb-6 leading-relaxed">
               {t("hero.subtitle")}
             </p>
             <div className="flex gap-3 justify-start">
               <Button size="default" onClick={() => navigate("/auth")} className="text-sm md:text-base px-5 md:px-6">
                 {t("hero.ctaPrimary")}
               </Button>
-              <Button size="default" variant="outline" onClick={() => navigate("/auth")} className="text-sm md:text-base px-5 md:px-6">
-                {t("hero.ctaLogin")}
-              </Button>
             </div>
           </div>
 
           {/* Right: additional text */}
           <div className="max-w-xl text-left md:-translate-y-[5px]">
-            <h3 className="text-xl md:text-2xl font-semibold mb-3">{t("hero.right.title")}</h3>
+            <h3 className="text-lg md:text-xl font-semibold mb-3">{t("hero.right.title")}</h3>
             <ul className="space-y-2.5 text-muted-foreground text-sm md:text-base">
               <li className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 mt-0.5 text-primary" />
+                <CheckCircle className="h-4 w-4 mt-0.5 text-primary" />
                 <span>{t("hero.right.point1")}</span>
               </li>
               <li className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 mt-0.5 text-primary" />
+                <CheckCircle className="h-4 w-4 mt-0.5 text-primary" />
                 <span>{t("hero.right.point2")}</span>
               </li>
               <li className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 mt-0.5 text-primary" />
+                <CheckCircle className="h-4 w-4 mt-0.5 text-primary" />
                 <span>{t("hero.right.point3")}</span>
               </li>
             </ul>
@@ -72,9 +70,9 @@ const Index = () => {
       {/* Features Grid */}
   <section className="container mx-auto px-12 md:px-16 xl:px-24 py-16">
         <div className="text-left mb-12">
-          <h3 className="text-3xl font-bold mb-3">Why Farmers Choose Nergi</h3>
+          <h3 className="text-3xl font-bold mb-3">{t("home.features.title")}</h3>
           <p className="text-muted-foreground">
-            Comprehensive tools for modern agricultural decision-making
+            {t("home.features.subtitle")}
           </p>
         </div>
 
@@ -84,9 +82,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <MapPin className="w-6 h-6 text-primary" />
               </div>
-              <CardTitle>Location-Based Intelligence</CardTitle>
+              <CardTitle>{t("home.features.cards.location.title")}</CardTitle>
               <CardDescription>
-                Get region-specific recommendations tailored to your exact location and local climate conditions
+                {t("home.features.cards.location.desc")}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -96,9 +94,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mb-4">
                 <TrendingUp className="w-6 h-6 text-success" />
               </div>
-              <CardTitle>Soil Analysis</CardTitle>
+              <CardTitle>{t("home.features.cards.soil.title")}</CardTitle>
               <CardDescription>
-                Real-time soil pH, nutrient levels, and moisture data to optimize your crop selection and amendments
+                {t("home.features.cards.soil.desc")}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -108,9 +106,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center mb-4">
                 <AlertTriangle className="w-6 h-6 text-warning" />
               </div>
-              <CardTitle>Pest & Disease Alerts</CardTitle>
+              <CardTitle>{t("home.features.cards.pest.title")}</CardTitle>
               <CardDescription>
-                Early warnings about fungal risks, insect threats, and weather hazards with safe mitigation strategies
+                {t("home.features.cards.pest.desc")}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -120,9 +118,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-4">
                 <Calendar className="w-6 h-6 text-primary" />
               </div>
-              <CardTitle>4-Week Planting Plans</CardTitle>
+              <CardTitle>{t("home.features.cards.plans.title")}</CardTitle>
               <CardDescription>
-                Detailed week-by-week task calendars with specific timings for watering, fertilizing, and monitoring
+                {t("home.features.cards.plans.desc")}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -132,9 +130,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Leaf className="w-6 h-6 text-primary" />
               </div>
-              <CardTitle>Crop Database</CardTitle>
+              <CardTitle>{t("home.features.cards.database.title")}</CardTitle>
               <CardDescription>
-                Extensive library of crops with optimal pH ranges, planting windows, and rotation recommendations
+                {t("home.features.cards.database.desc")}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -144,9 +142,9 @@ const Index = () => {
               <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center mb-4">
                 <Shield className="w-6 h-6 text-success" />
               </div>
-              <CardTitle>Safe Practices</CardTitle>
+              <CardTitle>{t("home.features.cards.safe.title")}</CardTitle>
               <CardDescription>
-                AI assistant prioritizes organic and IPM methods, tracks chemical use, and ensures regulatory compliance
+                {t("home.features.cards.safe.desc")}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -155,25 +153,23 @@ const Index = () => {
 
       {/* CTA Section */}
       <section className="container mx-auto px-12 md:px-16 xl:px-24 py-20">
-  <Card className="max-w-3xl border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5 shadow-md">
-          <CardContent className="pt-12 pb-12 text-left">
-            <h3 className="text-3xl font-bold mb-4">Ready to Grow Smarter?</h3>
+        <Card className="max-w-3xl mx-auto border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5 shadow-md">
+          <CardContent className="pt-12 pb-12 text-center">
+            <h3 className="text-3xl font-bold mb-4">{t("home.cta.title")}</h3>
             <p className="text-lg text-muted-foreground mb-8">
-              Join Georgian farmers making data-driven planting decisions with Nergi
+              {t("home.cta.subtitle")}
             </p>
-            <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-12">
-              Get Started Free
-            </Button>
+            <div className="flex justify-center">
+              <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-12">
+                {t("home.cta.button")}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-card/50 py-8">
-  <div className="container mx-auto px-12 md:px-16 xl:px-24 text-left text-sm text-muted-foreground">
-          <p>© 2025 Nergi. AI-powered agricultural assistant for Georgian farmers.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

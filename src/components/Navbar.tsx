@@ -53,7 +53,7 @@ const Navbar = () => {
 
   return (
     <header className="border-b border-border bg-card/80 backdrop-blur">
-  <div className="container mx-0 px-4 py-4 flex items-center justify-between">
+  <div className="container mx-0 px-4 py-4 flex items-center justify-between gap-4">
         <button 
           onClick={() => navigate("/")}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -63,6 +63,15 @@ const Navbar = () => {
           </div>
           <h1 className="text-2xl font-bold text-primary">Nergi</h1>
         </button>
+        
+        {/* Center navigation */}
+        <nav className="hidden md:flex items-center gap-1">
+          <Button variant="ghost" className="px-3" onClick={() => navigate("/")}>{t("nav.home")}</Button>
+          <span className="mx-1 h-5 w-px bg-border" />
+          <Button variant="ghost" className="px-3" onClick={() => navigate("/pricing")}>{t("nav.pricing")}</Button>
+          <span className="mx-1 h-5 w-px bg-border" />
+          <Button variant="ghost" className="px-3" onClick={() => navigate("/about")}>{t("nav.about")}</Button>
+        </nav>
         
         <div className="flex gap-3 items-center">
           {/* Language selector */}
@@ -115,9 +124,6 @@ const Navbar = () => {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => navigate("/auth")}>
-                {t("nav.login")}
-              </Button>
               <Button onClick={() => navigate("/auth")}>
                 {t("nav.getStarted")}
               </Button>

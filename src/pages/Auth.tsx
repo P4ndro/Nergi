@@ -9,9 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Leaf } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { useLocale } from "@/context/LocaleContext";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -50,9 +53,9 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast.success("Account created! Please check your email to verify.");
+      toast.success(t("auth.toasts.signupSuccess"));
     } catch (error: any) {
-      toast.error(error.message || "Failed to sign up");
+      toast.error(error.message || t("auth.toasts.signupFail"));
     } finally {
       setLoading(false);
     }
@@ -70,9 +73,9 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast.success("Welcome back!");
+      toast.success(t("auth.toasts.signinSuccess"));
     } catch (error: any) {
-      toast.error(error.message || "Failed to sign in");
+      toast.error(error.message || t("auth.toasts.signinFail"));
     } finally {
       setLoading(false);
     }
@@ -89,39 +92,39 @@ const Auth = () => {
           </div>
           <h1 className="text-4xl font-bold text-primary mb-2">Nergi</h1>
           <p className="text-muted-foreground text-center">
-            AI-powered farming assistant for Georgian farmers
+            {t("auth.brand.tagline")}
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Welcome</CardTitle>
+            <CardTitle>{t("auth.title")}</CardTitle>
             <CardDescription>
-              Sign in to access your personalized crop recommendations
+              {t("auth.description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="signin">{t("auth.tabs.signin")}</TabsTrigger>
+                <TabsTrigger value="signup">{t("auth.tabs.signup")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
+                    <Label htmlFor="signin-email">{t("auth.labels.email")}</Label>
                     <Input
                       id="signin-email"
                       type="email"
-                      placeholder="farmer@example.com"
+                      placeholder={t("auth.placeholders.email")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <Label htmlFor="signin-password">{t("auth.labels.password")}</Label>
                     <Input
                       id="signin-password"
                       type="password"
@@ -131,7 +134,7 @@ const Auth = () => {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Signing in..." : "Sign In"}
+                    {loading ? t("auth.buttons.signingIn") : t("auth.buttons.signIn")}
                   </Button>
                 </form>
               </TabsContent>
@@ -139,29 +142,29 @@ const Auth = () => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Label htmlFor="signup-name">{t("auth.labels.fullName")}</Label>
                     <Input
                       id="signup-name"
                       type="text"
-                      placeholder="Your name"
+                      placeholder={t("auth.placeholders.name")}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">{t("auth.labels.email")}</Label>
                     <Input
                       id="signup-email"
                       type="email"
-                      placeholder="farmer@example.com"
+                      placeholder={t("auth.placeholders.email")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password">{t("auth.labels.password")}</Label>
                     <Input
                       id="signup-password"
                       type="password"
@@ -172,7 +175,7 @@ const Auth = () => {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Creating account..." : "Sign Up"}
+                    {loading ? t("auth.buttons.creating") : t("auth.buttons.signUp")}
                   </Button>
                 </form>
               </TabsContent>
@@ -181,6 +184,7 @@ const Auth = () => {
         </Card>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

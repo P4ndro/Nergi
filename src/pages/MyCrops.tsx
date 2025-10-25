@@ -24,6 +24,8 @@ import {
 import { ArrowLeft, Leaf, Calendar as CalendarIcon, MapPin, Package2, Trash2, Eye, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { useLocale } from "@/context/LocaleContext";
 import { formatDistanceToNow } from "date-fns";
 
 interface UserCrop {
@@ -43,6 +45,7 @@ interface UserCrop {
 
 const MyCrops = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [crops, setCrops] = useState<UserCrop[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -89,8 +92,8 @@ const MyCrops = () => {
       if (error) throw error;
       setCrops(data || []);
     } catch (error: any) {
-      console.error("Error loading crops:", error);
-      toast.error("Failed to load crops");
+  console.error("Error loading crops:", error);
+  toast.error(t("mycrops.toasts.loadFail"));
     } finally {
       setLoading(false);
     }
@@ -105,11 +108,11 @@ const MyCrops = () => {
 
       if (error) throw error;
       
-      toast.success("Crop deleted successfully");
+  toast.success(t("mycrops.toasts.deleted"));
       setCrops(crops.filter(crop => crop.id !== cropId));
     } catch (error: any) {
-      console.error("Error deleting crop:", error);
-      toast.error("Failed to delete crop");
+  console.error("Error deleting crop:", error);
+  toast.error(t("mycrops.toasts.deleteFail"));
     } finally {
       setDeleteDialogOpen(false);
       setCropToDelete(null);
@@ -154,7 +157,7 @@ const MyCrops = () => {
         <div className="container mx-auto px-4 py-8 flex items-center justify-center">
           <div className="text-center">
             <Leaf className="w-12 h-12 text-primary animate-pulse mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading your crops...</p>
+            <p className="text-muted-foreground">{t("mycrops.loading")}</p>
           </div>
         </div>
       </div>
@@ -172,15 +175,13 @@ const MyCrops = () => {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">My Crops</h1>
-              <p className="text-muted-foreground">
-                Manage and track all your crops
-              </p>
+              <h1 className="text-3xl font-bold">{t("mycrops.title")}</h1>
+              <p className="text-muted-foreground">{t("mycrops.subtitle")}</p>
             </div>
           </div>
           <Button onClick={() => navigate("/add-crop")}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Crop
+            {t("mycrops.addCrop")}
           </Button>
         </div>
 
@@ -188,13 +189,13 @@ const MyCrops = () => {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Leaf className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No crops yet</h3>
+              <h3 className="text-xl font-semibold mb-2">{t("mycrops.empty.title")}</h3>
               <p className="text-muted-foreground mb-6 text-center max-w-md">
-                Get started by adding your first crop. Track planting dates, receive recommendations, and manage your farm.
+                {t("mycrops.empty.subtitle")}
               </p>
               <Button onClick={() => navigate("/add-crop")}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Your First Crop
+                {t("mycrops.empty.addFirst")}
               </Button>
             </CardContent>
           </Card>
@@ -236,7 +237,7 @@ const MyCrops = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CalendarIcon className="w-4 h-4" />
                         <span>
-                          Planted: {new Date(crop.planting_date).toLocaleDateString()}
+                          {t("mycrops.dates.planted")} {new Date(crop.planting_date).toLocaleDateString()}
                         </span>
                       </div>
                     )}
@@ -244,7 +245,7 @@ const MyCrops = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CalendarIcon className="w-4 h-4" />
                         <span>
-                          Planned: {new Date(crop.planned_date).toLocaleDateString()}
+                          {t("mycrops.dates.planned")} {new Date(crop.planned_date).toLocaleDateString()}
                         </span>
                       </div>
                     )}
@@ -270,7 +271,7 @@ const MyCrops = () => {
 
                   {/* Created Time */}
                   <div className="text-xs text-muted-foreground">
-                    Added {formatDistanceToNow(new Date(crop.created_at), { addSuffix: true })}
+                    {t("mycrops.addedPrefix")} {formatDistanceToNow(new Date(crop.created_at), { addSuffix: true })}
                   </div>
 
                   {/* Actions */}
@@ -282,7 +283,7 @@ const MyCrops = () => {
                       onClick={() => handleViewCrop(crop)}
                     >
                       <Eye className="w-4 h-4 mr-2" />
-                      View
+                      {t("mycrops.view")}
                     </Button>
                     <Button
                       variant="destructive"
@@ -456,22 +457,23 @@ const MyCrops = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t("mycrops.confirm.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the crop and all associated data.
+              {t("mycrops.confirm.desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("mycrops.confirm.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => cropToDelete && handleDeleteCrop(cropToDelete)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t("mycrops.confirm.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Footer />
     </div>
   );
 };
