@@ -326,7 +326,13 @@ const AddCrop = () => {
 
       // Call edge function for recommendation
       const { data, error } = await supabase.functions.invoke('crop-recommendation', {
-        body: { cropData, soilData, weatherData, location, soilReportText: soilReportText || null }
+        body: {
+          cropData,
+          soilData,
+          weatherData,
+          location,
+          soilReportText: soilReportText || null
+        }
       });
 
       if (error) throw error;
