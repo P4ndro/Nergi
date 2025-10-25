@@ -1,0 +1,200 @@
+{
+  "crop_statistics": {
+    "corn": {
+      "optimal_pH_min": 5.8,
+      "optimal_pH_max": 7.0,
+      "optimal_temp_min": 15,
+      "optimal_temp_max": 28,
+      "germination_days": 7,
+      "harvest_days_min": 80,
+      "harvest_days_max": 110,
+      "water_requirements_mm": {
+        "vegetative": 3.5,
+        "flowering": 5.0,
+        "maturity": 2.5
+      },
+      "typical_yield_per_ha": {
+        "low": 5000,
+        "average": 8500,
+        "high": 12000
+      },
+      "soil_preferences": [
+        "Well-drained loamy soil",
+        "pH 5.8-7.0",
+        "Organic matter 2-4%"
+      ],
+      "common_pests": [
+        "Corn borer",
+        "Aphids",
+        "Cutworms"
+      ],
+      "common_diseases": [
+        "Northern corn leaf blight",
+        "Common rust",
+        "Gray leaf spot"
+      ],
+      "fertilizer_needs_kg_per_ha": {
+        "nitrogen": 150,
+        "phosphorus": 80,
+        "potassium": 100
+      }
+    },
+    "wheat": {
+      "optimal_pH_min": 6.0,
+      "optimal_pH_max": 7.5,
+      "optimal_temp_min": 10,
+      "optimal_temp_max": 25,
+      "germination_days": 7,
+      "harvest_days_min": 120,
+      "harvest_days_max": 180,
+      "water_requirements_mm": {
+        "vegetative": 2.0,
+        "flowering": 3.0,
+        "maturity": 1.5
+      },
+      "typical_yield_per_ha": {
+        "low": 3000,
+        "average": 5000,
+        "high": 8000
+      },
+      "soil_preferences": [
+        "Deep fertile soil",
+        "pH 6.0-7.5",
+        "Good drainage"
+      ],
+      "common_pests": [
+        "Aphids",
+        "Wheat midge",
+        "Stem sawfly"
+      ],
+      "common_diseases": [
+        "Rust",
+        "Smut",
+        "Fusarium head blight"
+      ],
+      "fertilizer_needs_kg_per_ha": {
+        "nitrogen": 120,
+        "phosphorus": 60,
+        "potassium": 80
+      }
+    },
+    "tomato": {
+      "optimal_pH_min": 6.0,
+      "optimal_pH_max": 6.8,
+      "optimal_temp_min": 18,
+      "optimal_temp_max": 30,
+      "germination_days": 10,
+      "harvest_days_min": 75,
+      "harvest_days_max": 120,
+      "water_requirements_mm": {
+        "vegetative": 3.0,
+        "flowering": 4.5,
+        "maturity": 3.5
+      },
+      "typical_yield_per_ha": {
+        "low": 30000,
+        "average": 50000,
+        "high": 80000
+      },
+      "soil_preferences": [
+        "Rich, well-drained loam",
+        "pH 6.0-6.8",
+        "High organic matter"
+      ],
+      "common_pests": [
+        "Aphids",
+        "Tomato hornworm",
+        "Whiteflies"
+      ],
+      "common_diseases": [
+        "Early blight",
+        "Late blight",
+        "Fusarium wilt"
+      ],
+      "fertilizer_needs_kg_per_ha": {
+        "nitrogen": 100,
+        "phosphorus": 50,
+        "potassium": 150
+      }
+    },
+    "potato": {
+      "optimal_pH_min": 5.0,
+      "optimal_pH_max": 6.5,
+      "optimal_temp_min": 12,
+      "optimal_temp_max": 24,
+      "germination_days": 14,
+      "harvest_days_min": 90,
+      "harvest_days_max": 150,
+      "water_requirements_mm": {
+        "vegetative": 3.5,
+        "tuber_formation": 5.0,
+        "maturity": 2.0
+      },
+      "typical_yield_per_ha": {
+        "low": 15000,
+        "average": 30000,
+        "high": 50000
+      },
+      "soil_preferences": [
+        "Loose, well-drained soil",
+        "pH 5.0-6.5",
+        "Adequate moisture"
+      ],
+      "common_pests": [
+        "Colorado potato beetle",
+        "Aphids",
+        "Wireworms"
+      ],
+      "common_diseases": [
+        "Late blight",
+        "Early blight",
+        "Scab"
+      ],
+      "fertilizer_needs_kg_per_ha": {
+        "nitrogen": 120,
+        "phosphorus": 80,
+        "potassium": 200
+      }
+    },
+    "cucumber": {
+      "optimal_pH_min": 6.0,
+      "optimal_pH_max": 7.0,
+      "optimal_temp_min": 18,
+      "optimal_temp_max": 32,
+      "germination_days": 7,
+      "harvest_days_min": 50,
+      "harvest_days_max": 70,
+      "water_requirements_mm": {
+        "vegetative": 4.0,
+        "flowering": 5.5,
+        "maturity": 4.5
+      },
+      "typical_yield_per_ha": {
+        "low": 20000,
+        "average": 40000,
+        "high": 60000
+      },
+      "soil_preferences": [
+        "Rich, moist soil",
+        "pH 6.0-7.0",
+        "Organic matter 3-5%"
+      ],
+      "common_pests": [
+        "Cucumber beetle",
+        "Aphids",
+        "Spider mites"
+      ],
+      "common_diseases": [
+        "Powdery mildew",
+        "Downy mildew",
+        "Bacterial wilt"
+      ],
+      "fertilizer_needs_kg_per_ha": {
+        "nitrogen": 80,
+        "phosphorus": 50,
+        "potassium": 120
+      }
+    }
+  }
+}
+

@@ -14,6 +14,71 @@ import CropSearch from "@/components/CropSearch";
 import RecommendationDisplay from "@/components/RecommendationDisplay";
 import Navbar from "@/components/Navbar";
 
+// Weather API configuration
+const WEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY || "your_api_key_here";
+
+async function fetchWeatherData(lat: number, lon: number) {
+  try {
+    // Fetch current weather and 7-day forecast
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`
+    );
+    
+    if (!response.ok) {
+      throw new Error("Weather API request failed");
+    }
+    
+    const data = await response.json();
+    
+    // Calculate averages from forecast data
+    const forecasts = data.list.slice(0, 7); // Next 7 periods
+    let totalHumidity = 0;
+    let totalRain = 0;
+    let minTemp = Infinity;
+    let maxTemp = -Infinity;
+    
+    forecasts.forEach((forecast: any) => {
+      totalHumidity += forecast.main.humidity;
+      totalRain += (forecast.rain?.['3h'] || 0); // 3-hour rainfall in mm
+      
+      const tempMin = forecast.main.temp_min;
+      const tempMax = forecast.main.temp_max;
+      
+      if (tempMin < minTemp) minTemp = tempMin;
+      if (tempMax > maxTemp) maxTemp = tempMax;
+    });
+    
+    return {
+      humidity: Math.round(totalHumidity / forecasts.length),
+      rainfall: Math.round(totalRain * 10) / 10, // Convert to mm
+      tempMin: Math.round(minTemp),
+      tempMax: Math.round(maxTemp),
+      currentTemp: Math.round(data.list[0].main.temp),
+      windSpeed: data.list[0].wind.speed,
+      description: data.list[0].weather[0].description,
+      forecast: data.list.slice(0, 3).map((f: any) => ({
+        date: f.dt_txt,
+        temp: Math.round(f.main.temp),
+        humidity: f.main.humidity,
+        condition: f.weather[0].main
+      }))
+    };
+  } catch (error) {
+    console.error("Error fetching weather data:", error);
+    // Return default weather data if API fails
+    return {
+      humidity: 70,
+      rainfall: 30,
+      tempMin: 15,
+      tempMax: 25,
+      currentTemp: 20,
+      windSpeed: 5,
+      description: "Partly cloudy",
+      forecast: []
+    };
+  }
+}
+
 const AddCrop = () => {
   const navigate = useNavigate();
   const [selectedCrop, setSelectedCrop] = useState<string>("");
@@ -63,7 +128,10 @@ const AddCrop = () => {
 
       if (!profile) throw new Error("Profile not found");
 
-      // Mock soil and weather data (in production, fetch from APIs)
+      // Fetch real weather data from OpenWeatherMap API
+      const weatherData = await fetchWeatherData(profile.location_lat, profile.location_lon);
+
+      // Mock soil data (in production, fetch from soil APIs)
       const soilData = {
         pH: 6.2,
         nitrogen: "Medium",
@@ -71,13 +139,6 @@ const AddCrop = () => {
         potassium: "Medium",
         organicMatter: "3.5%",
         moisture: "Adequate"
-      };
-
-      const weatherData = {
-        humidity: 78,
-        rainfall: 45,
-        tempMin: 15,
-        tempMax: 28
       };
 
       const cropData = {

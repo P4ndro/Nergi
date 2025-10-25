@@ -59,6 +59,28 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase (Backend & Database)
+- Agricultural Research Data (agridat package integration)
+
+## Features
+
+### AI-Powered Crop Recommendations
+- **Agricultural Research Integration**: Recommendations based on data from the `agridat` R package
+- **Soil Analysis**: Compare soil conditions against crop-specific optimal ranges
+- **Weather-Based Risk Assessment**: Temperature and humidity analysis
+- **Pest/Disease Prediction**: Crop-specific pest and disease risk assessment
+- **Fertilizer Recommendations**: Precise amounts based on research data
+- **Growing Calendars**: 4-week actionable plans aligned with research-proven growth cycles
+
+### Data-Driven Insights
+- Crop-specific optimal pH ranges (e.g., corn 5.8-7.0, wheat 6.0-7.5)
+- Temperature requirements and growing periods
+- Expected yields based on agricultural research
+- Common pests and diseases for each crop
+- Fertilizer needs in kg/ha (N, P, K)
+- Soil preferences and amendments
+
+See [AGRIDAT_INTEGRATION.md](./AGRIDAT_INTEGRATION.md) for details.
 
 ## How can I deploy this project?
 
