@@ -107,3 +107,82 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Hero shader background (subtle, performant, no WebGL) */
+.hero-section {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate; /* ensure z-index layers behave */
+}
+
+.hero-shaders {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.hero-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.55;
+  will-change: transform, opacity;
+}
+
+.hero-blob--primary {
+  width: 36rem; /* 576px */
+  height: 36rem;
+  left: -8rem;
+  top: -10rem;
+  background: radial-gradient(closest-side, hsl(var(--primary) / 0.45), transparent 70%);
+  animation: float-1 12s ease-in-out infinite;
+}
+
+.hero-blob--accent {
+  width: 28rem;
+  height: 28rem;
+  right: -6rem;
+  top: -4rem;
+  background: radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%);
+  animation: float-2 14s ease-in-out infinite;
+}
+
+.hero-blob--success {
+  width: 32rem;
+  height: 32rem;
+  left: 10%;
+  bottom: -10rem;
+  background: radial-gradient(closest-side, hsl(var(--success) / 0.35), transparent 70%);
+  animation: float-3 16s ease-in-out infinite;
+}
+
+.hero-noise {
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.hero-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 80% at 10% 0%, transparent 0%, transparent 55%, hsl(0 0% 0% / 0.06) 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes float-1 {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(6px, -10px, 0); }
+}
+@keyframes float-2 {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-8px, 12px, 0); }
+}
+@keyframes float-3 {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(10px, -6px, 0); }
+}
