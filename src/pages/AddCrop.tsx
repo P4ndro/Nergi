@@ -162,9 +162,16 @@ const AddCrop = () => {
       };
 
       // Call edge function for recommendation
-      const { data, error } = await supabase.functions.invoke('crop-recommendation', {
-        body: { cropData, soilData, weatherData, location }
-      });
+     const { data, error } = await supabase.functions.invoke('crop-recommendation', {
+body: {
+cropData,
+soilData,
+weatherData,
+location,
+includePesticides: true,
+country_or_region: profile.location_region  || 'Georgia'
+}
+});
 
       if (error) throw error;
 
