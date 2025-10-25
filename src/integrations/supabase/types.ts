@@ -116,6 +116,9 @@ export type Database = {
           location_lon: number | null
           location_region: string | null
           name: string | null
+          soil_report_data: Json | null
+          soil_report_date: string | null
+          soil_report_location: string | null
           updated_at: string
         }
         Insert: {
@@ -126,6 +129,9 @@ export type Database = {
           location_lon?: number | null
           location_region?: string | null
           name?: string | null
+          soil_report_data?: Json | null
+          soil_report_date?: string | null
+          soil_report_location?: string | null
           updated_at?: string
         }
         Update: {
@@ -136,6 +142,9 @@ export type Database = {
           location_lon?: number | null
           location_region?: string | null
           name?: string | null
+          soil_report_data?: Json | null
+          soil_report_date?: string | null
+          soil_report_location?: string | null
           updated_at?: string
         }
         Relationships: []

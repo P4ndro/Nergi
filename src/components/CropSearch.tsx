@@ -68,16 +68,29 @@ const CropSearch = ({ selectedCrop, onSelectCrop }: CropSearchProps) => {
           placeholder="Type to search crops..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && searchTerm.trim().length > 0) {
+              onSelectCrop(searchTerm.trim());
+            }
+          }}
         />
       </div>
 
       {/* Suggestions */}
-      {suggestions.length > 0 && (
+      {(searchTerm && searchTerm.trim().length > 0) && (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            {searchTerm ? "Matching crops:" : "Popular crops:"}
+            {"Matching crops:"}
           </p>
           <div className="flex flex-wrap gap-2">
+            {/* Allow free-text selection */}
+            <Badge
+              variant={selectedCrop === searchTerm.trim() ? "default" : "outline"}
+              className="cursor-pointer hover:bg-primary/10"
+              onClick={() => handleSelectCrop(searchTerm.trim())}
+            >
+              Use "{searchTerm.trim()}"
+            </Badge>
             {suggestions.map((crop) => (
               <Badge
                 key={crop.id}
