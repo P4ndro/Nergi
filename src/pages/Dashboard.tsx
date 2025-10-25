@@ -8,6 +8,7 @@ import { Leaf, MapPin, Plus, AlertTriangle, TrendingUp, Droplets } from "lucide-
 import { toast } from "sonner";
 import LocationPermission from "@/components/LocationPermission";
 import Navbar from "@/components/Navbar";
+import { AlertCalendar } from "@/components/AlertCalendar";
 
 interface Profile {
   id: string;
@@ -225,6 +226,9 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Alert Calendar with Weather Monitoring */}
+        {profile?.id && <AlertCalendar userId={profile.id} />}
 
         {/* Weather Warning */}
         <Card className="border-warning/40 bg-warning/5">
