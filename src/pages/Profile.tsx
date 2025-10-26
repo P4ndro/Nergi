@@ -85,70 +85,43 @@ const Profile = () => {
       setLoading(false);
     }
   };
-
-  const handleFileUpload = async (file: File) => {
+const handleFileUpload = async (file: File) => {
+  try {
     setUploading(true);
-    setUploadedFile(file);
     
-    try {
-      // Simulate progress
-      setUploadProgress(20);
-      
-      // Parse PDF using Edge Function
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('location', profile?.location_region || 'Unknown');
-      formData.append('crop', ''); // Can be set from user input later
-      
-      const { data: parseResult, error: parseError } = await supabase.functions.invoke(
-        'parse-soil-pdf',
-        {
-          body: formData
-        }
-      );
-      
-      if (parseError) throw parseError;
-      
-      setUploadProgress(60);
-      
-      // Save to soil_reports table
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      
-      const { error: dbError } = await supabase
-        .from('soil_reports' as any)
-        .insert({
-          user_id: user.id,
-          location: profile?.location_region || 'Unknown',
-          crop: null,
-          pdf_text: parseResult.pdf_text,
-          ph: parseResult.parsed.ph,
-          nitrogen: parseResult.parsed.nitrogen,
-          phosphorus: parseResult.parsed.phosphorus,
-          potassium: parseResult.parsed.potassium,
-          organic_matter: parseResult.parsed.organic_matter,
-          electrical_conductivity: parseResult.parsed.electrical_conductivity
-        });
-      
-      setUploadProgress(100);
-      
-      if (dbError) {
-        console.error("Database error:", dbError);
-        throw new Error(`Failed to save to database: ${dbError.message}`);
-      }
-      
-      toast.success(`Soil analysis uploaded and parsed successfully!`);
-      loadProfile(); // Reload profile to show updated data
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast.error(error.message || "Failed to upload soil analysis");
-      setUploadedFile(null);
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('You must be logged in to upload files');
     }
-  };
+    
+    // Extract text from PDF
+    const result = await uploadAndExtractFile(file, (progress) => {
+      console.log('Upload progress:', progress);
+    });
 
+    // Save to database
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        soil_analysis_text: result.extractedText,
+        soil_analysis_file_name: result.fileName,
+        soil_analysis_uploaded_at: new Date().toISOString()
+      })
+      .eq('id', user.id);
+
+    if (error) throw error;
+
+    alert('✅ File uploaded successfully!');
+    setUploading(false);
+    
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    alert('❌ Upload failed: ' + error.message);
+    setUploading(false);
+  }
+};
   const handleRemoveSoilAnalysis = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
