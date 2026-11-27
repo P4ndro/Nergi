@@ -1,4 +1,4 @@
-project_id = "osbyqrzbfcojbqjmwhej"
+project_id = "dsqmtkpogeaerfombade"
 
 [functions.crop-recommendation]
 verify_jwt = true

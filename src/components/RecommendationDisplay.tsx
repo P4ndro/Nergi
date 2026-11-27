@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, AlertTriangle, XCircle, Beaker } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { useMemo } from "react";
-import { addDays } from "date-fns";
+import { useMemo, useState } from "react";
+import { addDays, differenceInCalendarDays, format, startOfDay } from "date-fns";
 
 interface Risk {
   type: string;
@@ -56,10 +56,11 @@ interface RecommendationProps {
 }
 
 const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
-  // Get medicine dates from the calendar
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => startOfDay(new Date()));
+  const recommendationStartDate = useMemo(() => startOfDay(new Date()), []);
+
   const medicineDates = useMemo(() => {
     const dates: Date[] = [];
-    const today = new Date();
     
     if (recommendation.calendar && recommendation.calendar.length > 0) {
       recommendation.calendar.forEach((week) => {
@@ -74,16 +75,28 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
             lowerTask.includes("apply") ||
             lowerTask.includes("chemical")
           ) {
-            // Calculate approximate date: week 1 = +7 days, week 2 = +14 days, etc.
-            const daysToAdd = (week.week - 1) * 7 + 3; // Mid-week
-            dates.push(addDays(today, daysToAdd));
+            const daysToAdd = (week.week - 1) * 7 + 3;
+            dates.push(addDays(recommendationStartDate, daysToAdd));
           }
         });
       });
     }
     
     return dates;
-  }, [recommendation.calendar]);
+  }, [recommendation.calendar, recommendationStartDate]);
+
+  const selectedWeek = useMemo(() => {
+    if (!selectedDate) return undefined;
+
+    const daysSinceStart = differenceInCalendarDays(
+      startOfDay(selectedDate),
+      recommendationStartDate,
+    );
+    if (daysSinceStart < 0) return undefined;
+
+    const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+    return recommendation.calendar.find((week) => week.week === weekNumber);
+  }, [recommendation.calendar, recommendationStartDate, selectedDate]);
 
   const getVerdictIcon = () => {
     switch (recommendation.verdict) {
@@ -316,7 +329,7 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
           <CardHeader>
             <CardTitle>Task Calendar</CardTitle>
             <CardDescription>
-              Green dates indicate medicine/pesticide application days
+              Select a date to view the tasks for that recommendation week. Green dates mark application-related tasks.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -328,6 +341,8 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
               
               <Calendar
                 mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
                 className="rounded-md border"
                 classNames={{
                   day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
@@ -341,32 +356,32 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
                 }}
               />
 
-              {/* Task List by Week */}
-              <div className="mt-6 space-y-4">
-                <h3 className="font-semibold text-sm">Upcoming Tasks by Week</h3>
-                {recommendation.calendar.map((week) => (
-                  <div key={week.week} className="border-l-2 border-primary pl-4">
-                    <p className="font-semibold mb-2">Week {week.week}</p>
-                    <ul className="space-y-1">
-                      {week.tasks.map((task, idx) => {
-                        const isMedicineTask = task.toLowerCase().includes("spray") ||
-                          task.toLowerCase().includes("pesticide") ||
-                          task.toLowerCase().includes("fungicide") ||
-                          task.toLowerCase().includes("medicine") ||
-                          task.toLowerCase().includes("apply") ||
-                          task.toLowerCase().includes("chemical");
-                        return (
-                          <li
-                            key={idx}
-                            className={`text-sm ${isMedicineTask ? "text-green-600 font-medium" : "text-muted-foreground"}`}
-                          >
+              <div className="mt-6 rounded-md border bg-muted/30 p-4" aria-live="polite">
+                <h3 className="font-semibold text-sm">
+                  {selectedDate ? `Tasks for ${format(selectedDate, "MMMM d, yyyy")}` : "Select a date"}
+                </h3>
+                {selectedWeek && selectedDate ? (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Recommendation Week {selectedWeek.week} ({format(addDays(recommendationStartDate, (selectedWeek.week - 1) * 7), "MMM d")}–{format(addDays(recommendationStartDate, selectedWeek.week * 7 - 1), "MMM d, yyyy")})
+                    </p>
+                    {selectedWeek.tasks.length > 0 ? (
+                      <ul className="space-y-2">
+                        {selectedWeek.tasks.map((task, idx) => (
+                          <li key={idx} className="text-sm text-foreground">
                             • {task}
                           </li>
-                        );
-                      })}
-                    </ul>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No tasks are listed for this week.</p>
+                    )}
                   </div>
-                ))}
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No recommendation tasks for this date. Choose a date within the next four weeks.
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>

@@ -39,6 +39,8 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [cropCount, setCropCount] = useState(0);
+  const [showLocationSetup, setShowLocationSetup] = useState(false);
+  const hasLocation = profile?.location_lat != null && profile.location_lon != null;
 
   useEffect(() => {
     loadProfile();
@@ -104,10 +106,6 @@ const Dashboard = () => {
     );
   }
 
-  if (!profile?.location_consent_given) {
-    return <LocationPermission onLocationGranted={loadProfile} />;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
       <Navbar />
@@ -116,12 +114,34 @@ const Dashboard = () => {
         <div className="mb-6">
           <p className="text-sm text-muted-foreground">{t('welcome')}, {profile?.name}</p>
         </div>
-        {/* Location Badge */}
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <MapPin className="w-5 h-5 text-primary" />
-          <span className="font-medium">{profile?.location_region || t('location_set')}</span>
-          <Badge variant="secondary" className="ml-2">{t('active')}</Badge>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">
+              {hasLocation ? profile?.location_region || t('location_set') : "Location not set"}
+            </p>
+            {!hasLocation && (
+              <p className="text-sm text-muted-foreground">
+                Location is optional. Add one for local weather and recommendations.
+              </p>
+            )}
+          </div>
+          {hasLocation && <Badge variant="secondary">{t('active')}</Badge>}
+          <Button variant="outline" size="sm" onClick={() => setShowLocationSetup((show) => !show)}>
+            {showLocationSetup ? "Close" : hasLocation ? "Change location" : "Set location"}
+          </Button>
         </div>
+        {showLocationSetup && (
+          <div className="mb-8">
+            <LocationPermission
+              onLocationGranted={async () => {
+                await loadProfile();
+                setShowLocationSetup(false);
+              }}
+              onSkip={() => setShowLocationSetup(false)}
+            />
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -181,7 +201,7 @@ const Dashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5" />
-                  Soil Status - {profile?.location_region}
+                  Soil Status{profile.location_region ? ` - ${profile.location_region}` : ""}
                 </CardTitle>
                 <CardDescription>
                   From your soil report {profile.soil_report_location && `(${profile.soil_report_location})`}
@@ -277,23 +297,24 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Weather Warning */}
-        <Card className="border-warning/40 bg-warning/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-warning">
-              <AlertTriangle className="w-5 h-5" />
-              {t('weather_alert')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              <span className="font-medium">{t('fungal_risk_moderate')}</span> {t('weather_risk_copy')}
-            </p>
-            <Button variant="outline" size="sm" className="mt-4">
-              {t('view_details')}
-            </Button>
-          </CardContent>
-        </Card>
+        {hasLocation && (
+          <Card className="border-warning/40 bg-warning/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-warning">
+                <AlertTriangle className="w-5 h-5" />
+                {t('weather_alert')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">
+                <span className="font-medium">{t('fungal_risk_moderate')}</span> {t('weather_risk_copy')}
+              </p>
+              <Button variant="outline" size="sm" className="mt-4">
+                {t('view_details')}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );
