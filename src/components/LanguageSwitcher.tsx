@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const LanguageSwitcher = () => {
-  const { i18n } = useTranslation();
-  const [lang, setLang] = useState<string>("en");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("nergi_lang");
-    if (saved) setLang(saved);
-  }, []);
+  const { i18n, t } = useTranslation();
+  const [lang, setLang] = useState<string>(i18n.language || "en");
 
   const choose = (lng: string) => {
     setLang(lng);
@@ -29,13 +24,13 @@ const LanguageSwitcher = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2" aria-label={t("language")}>
           <Globe className="w-4 h-4" />
           <span className="font-medium">{lang.toUpperCase()}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className="w-44">
-        <DropdownMenuLabel>Language</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuLabel>{t("language")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => choose("en")}>
           EN — English {lang === "en" ? "✓" : ""}

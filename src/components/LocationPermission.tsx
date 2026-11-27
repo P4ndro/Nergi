@@ -6,6 +6,7 @@ import { AlertCircle, Loader2, MapPin, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "react-i18next";
 
 interface LocationPermissionProps {
   onLocationGranted: () => void | Promise<void>;
@@ -23,7 +24,22 @@ interface LocationSearchResult {
 
 const WEATHER_API_KEY = import.meta.env.VITE_WEATHERAPI_KEY;
 
+/** "Tbilisi, Tbilisi, Georgia" -> "Tbilisi, Georgia" */
+function placeLabel(parts: Array<string | undefined>): string {
+  const seen = new Set<string>();
+  return parts
+    .filter((part): part is string => !!part && part.trim().length > 0)
+    .filter((part) => {
+      const key = part.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(", ");
+}
+
 const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionProps) => {
+  const { t } = useTranslation();
   const [busyAction, setBusyAction] = useState<"location" | "search" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
@@ -46,11 +62,11 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
 
       if (error) throw error;
 
-      toast.success("Location saved successfully!");
+      toast.success(t("loc_saved"));
       await onLocationGranted();
     } catch (error) {
       console.error("Failed to save location:", error);
-      toast.error(`Failed to save location: ${error instanceof Error ? error.message : String(error)}`);
+      toast.error(`${t("loc_save_failed")}: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setBusyAction(null);
     }
@@ -58,18 +74,20 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
 
   const handleGrantLocation = () => {
     if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser. Search for a location instead.");
+      toast.error(t("loc_no_geo"));
       return;
     }
 
     setBusyAction("location");
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        void saveLocation(coords.latitude, coords.longitude, determineRegion(coords.latitude, coords.longitude));
+        void describeLocation(coords.latitude, coords.longitude).then((label) =>
+          saveLocation(coords.latitude, coords.longitude, label),
+        );
       },
       (error) => {
         console.error("Geolocation error:", error);
-        toast.error("Could not get your location. You can search for a place instead.");
+        toast.error(t("loc_geo_failed"));
         setBusyAction(null);
       },
     );
@@ -79,11 +97,11 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
     event.preventDefault();
     const query = searchQuery.trim();
     if (!query) {
-      toast.error("Enter a city or place to search.");
+      toast.error(t("loc_enter_query"));
       return;
     }
     if (!WEATHER_API_KEY) {
-      toast.error("Location search is unavailable because the weather API key is not configured.");
+      toast.error(t("loc_search_unavailable"));
       return;
     }
 
@@ -105,28 +123,36 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
 
       const results = data as LocationSearchResult[];
       setSearchResults(results);
-      if (results.length === 0) toast.info("No matching locations found.");
+      if (results.length === 0) toast.info(t("loc_no_results"));
     } catch (error) {
       console.error("Location search failed:", error);
-      toast.error(error instanceof Error ? error.message : "Location search failed.");
+      toast.error(error instanceof Error ? error.message : t("loc_search_failed"));
     } finally {
       setBusyAction(null);
     }
   };
 
   const handleSelectLocation = (location: LocationSearchResult) => {
-    const label = [location.name, location.region, location.country].filter(Boolean).join(", ");
+    const label = placeLabel([location.name, location.region, location.country]);
     setBusyAction("location");
     void saveLocation(location.lat, location.lon, label);
   };
 
-  const determineRegion = (lat: number, lon: number): string => {
-    // Simplified region detection for Georgia
-    // In production, use proper geocoding service
-    if (lat > 42.5 && lon < 42) return "Samegrelo";
-    if (lat > 41.5 && lon > 45) return "Kakheti";
-    if (lat > 42 && lon > 43) return "Kartli";
-    return "Georgia";
+  // Turns coordinates into a readable place name using the weather service's lookup.
+  const describeLocation = async (lat: number, lon: number): Promise<string> => {
+    const fallback = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+    if (!WEATHER_API_KEY) return fallback;
+    try {
+      const params = new URLSearchParams({ key: WEATHER_API_KEY, q: `${lat},${lon}` });
+      const response = await fetch(`https://api.weatherapi.com/v1/search.json?${params}`);
+      if (!response.ok) return fallback;
+      const data: unknown = await response.json();
+      const place = Array.isArray(data) ? (data[0] as Partial<LocationSearchResult> | undefined) : undefined;
+      if (!place?.name) return fallback;
+      return placeLabel([place.name, place.region, place.country]);
+    } catch {
+      return fallback;
+    }
   };
 
   return (
@@ -137,9 +163,9 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
             <MapPin className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <CardTitle>Set a location (optional)</CardTitle>
+            <CardTitle>{t("loc_title")}</CardTitle>
             <CardDescription>
-              Use your current location or search for a city to get local weather and crop recommendations.
+              {t("loc_intro")}
             </CardDescription>
           </div>
         </div>
@@ -147,7 +173,7 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
       <CardContent className="space-y-4">
         <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-          <p>Your location is only saved when you choose to use or search for one. You can skip this and continue without location-based data.</p>
+          <p>{t("loc_privacy")}</p>
         </div>
 
         <Button
@@ -158,27 +184,27 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
           className="w-full"
         >
           {busyAction === "location" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-          Use my current location
+          {t("loc_use_current")}
         </Button>
 
-        <div className="text-center text-sm text-muted-foreground">or search for a place</div>
+        <div className="text-center text-sm text-muted-foreground">{t("loc_or_search")}</div>
 
         <form onSubmit={handleSearch} className="flex gap-2">
           <Input
-            aria-label="Search for a city or place"
-            placeholder="City, region, or country"
+            aria-label={t("loc_search_label")}
+            placeholder={t("loc_search_ph")}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             disabled={busyAction !== null}
           />
           <Button type="submit" disabled={busyAction !== null}>
             {busyAction === "search" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            <span className="ml-2">Search</span>
+            <span className="ml-2">{t("loc_search")}</span>
           </Button>
         </form>
 
         {searchResults.length > 0 && (
-          <div className="space-y-2" aria-label="Location search results">
+          <div className="space-y-2" aria-label={t("loc_search_label")}>
             {searchResults.map((result) => (
               <Button
                 key={`${result.id}-${result.lat}-${result.lon}`}
@@ -188,7 +214,7 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
                 disabled={busyAction !== null}
                 onClick={() => handleSelectLocation(result)}
               >
-                {result.name}{result.region ? `, ${result.region}` : ""}{result.country ? `, ${result.country}` : ""}
+                {placeLabel([result.name, result.region, result.country])}
               </Button>
             ))}
           </div>
@@ -196,7 +222,7 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
 
         <div className="flex justify-end">
           <Button type="button" variant="ghost" onClick={onSkip} disabled={busyAction !== null}>
-            Not now
+            {t("loc_not_now")}
           </Button>
         </div>
       </CardContent>

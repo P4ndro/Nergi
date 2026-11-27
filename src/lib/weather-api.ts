@@ -14,6 +14,8 @@ export interface WeatherData {
   rainfall: number;
   description: string;
   windSpeed: number;
+  /** True when this is a generic estimate rather than a live forecast for the user's location. */
+  isEstimate: boolean;
   forecast?: Array<{
     date: string;
     temp: number;
@@ -24,7 +26,18 @@ export interface WeatherData {
 /**
  * Fetches current weather data for the given location
  */
-export async function fetchWeatherData(lat: number, lon: number): Promise<WeatherData | null> {
+interface ForecastDay {
+  date: string;
+  day: {
+    mintemp_c: number;
+    maxtemp_c: number;
+    avgtemp_c: number;
+    totalprecip_mm?: number;
+    condition: { text: string };
+  };
+}
+
+export async function fetchWeatherData(lat: number, lon: number): Promise<WeatherData> {
   if (!WEATHER_API_KEY) {
     console.warn("WeatherAPI key not configured. Using mock data.");
     return getMockWeatherData();
@@ -51,22 +64,22 @@ export async function fetchWeatherData(lat: number, lon: number): Promise<Weathe
     const description = current.condition.text;
 
     // Extract forecast data
-    const forecastData = data.forecast?.forecastday || [];
+    const forecastData: ForecastDay[] = data.forecast?.forecastday || [];
     
     // Calculate temperature range from forecast
-    const temps = forecastData.map((day: any) => ({
+    const temps = forecastData.map((day) => ({
       min: day.day.mintemp_c,
       max: day.day.maxtemp_c,
     }));
     
-    const tempMin = Math.min(...temps.map((t: any) => t.min));
-    const tempMax = Math.max(...temps.map((t: any) => t.max));
+    const tempMin = temps.length ? Math.min(...temps.map((t) => t.min)) : currentTemp;
+    const tempMax = temps.length ? Math.max(...temps.map((t) => t.max)) : currentTemp;
 
     // Calculate total rainfall
-    const totalRainfall = forecastData.reduce((sum: number, day: any) => sum + (day.day.totalprecip_mm || 0), 0);
+    const totalRainfall = forecastData.reduce((sum, day) => sum + (day.day.totalprecip_mm || 0), 0);
 
     // Format forecast for the next 7 days
-    const forecast = forecastData.map((day: any) => ({
+    const forecast = forecastData.map((day) => ({
       date: day.date,
       temp: day.day.avgtemp_c,
       condition: day.day.condition.text,
@@ -80,6 +93,7 @@ export async function fetchWeatherData(lat: number, lon: number): Promise<Weathe
       rainfall: totalRainfall,
       description,
       windSpeed,
+      isEstimate: false,
       forecast,
     };
 
@@ -92,7 +106,7 @@ export async function fetchWeatherData(lat: number, lon: number): Promise<Weathe
 /**
  * Returns mock weather data as a fallback
  */
-function getMockWeatherData(): WeatherData {
+export function getMockWeatherData(): WeatherData {
   return {
     currentTemp: 20,
     humidity: 78,
@@ -101,6 +115,7 @@ function getMockWeatherData(): WeatherData {
     tempMax: 28,
     description: "Partly cloudy",
     windSpeed: 2.5,
+    isEstimate: true,
   };
 }
 

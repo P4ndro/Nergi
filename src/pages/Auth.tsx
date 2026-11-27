@@ -52,9 +52,9 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast.success("Account created! Please check your email to verify.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to sign up");
+      toast.success(t("auth_created"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("auth_signup_failed"));
     } finally {
       setLoading(false);
     }
@@ -72,9 +72,9 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast.success("Welcome back!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to sign in");
+      toast.success(t("auth_welcome_back"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("auth_signin_failed"));
     } finally {
       setLoading(false);
     }
@@ -111,6 +111,7 @@ const Auth = () => {
                     <Label htmlFor="signin-email">{t('auth_email')}</Label>
                     <Input
                       id="signin-email"
+                      autoComplete="email"
                       type="email"
                       placeholder={t('auth_email_ph')}
                       value={email}
@@ -122,6 +123,7 @@ const Auth = () => {
                     <Label htmlFor="signin-password">{t('auth_password')}</Label>
                     <Input
                       id="signin-password"
+                      autoComplete="current-password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -140,6 +142,7 @@ const Auth = () => {
                     <Label htmlFor="signup-name">{t('auth_full_name')}</Label>
                     <Input
                       id="signup-name"
+                      autoComplete="name"
                       type="text"
                       placeholder={t('auth_name_ph')}
                       value={name}
@@ -151,6 +154,7 @@ const Auth = () => {
                     <Label htmlFor="signup-email">{t('auth_email')}</Label>
                     <Input
                       id="signup-email"
+                      autoComplete="email"
                       type="email"
                       placeholder={t('auth_email_ph')}
                       value={email}
@@ -162,12 +166,15 @@ const Auth = () => {
                     <Label htmlFor="signup-password">{t('auth_password')}</Label>
                     <Input
                       id="signup-password"
+                      autoComplete="new-password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={6}
+                      aria-describedby="signup-password-hint"
                     />
+                    <p id="signup-password-hint" className="text-xs text-muted-foreground">{t('auth_password_hint')}</p>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? t('auth_creating_account') : t('auth_signup_btn')}

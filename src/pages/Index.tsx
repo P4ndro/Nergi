@@ -14,22 +14,22 @@ const Index = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
+      <section className="container mx-auto px-4 py-12 sm:py-20 text-center">
         <div className="max-w-3xl mx-auto">
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
             <Leaf className="w-12 h-12 text-primary" />
           </div>
-          <h2 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+          <h2 className="text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
             {t('hero_headline')}
           </h2>
-          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+          <p className="text-lg sm:text-xl text-muted-foreground mb-8 leading-relaxed">
             {t('hero_sub')}
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
               {t('cta_get_started')}
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8">
+            <Button size="lg" variant="outline" onClick={() => navigate("/dashboard")} className="text-lg px-8">
               {t('cta_go_dashboard')}
             </Button>
           </div>
@@ -110,9 +110,9 @@ const Index = () => {
       <section className="container mx-auto px-4 py-20">
         <Card className="max-w-3xl mx-auto border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
           <CardContent className="pt-12 pb-12 text-center">
-            <h3 className="text-3xl font-bold mb-4">{t('ready_grow')}</h3>
+            <h3 className="text-2xl sm:text-3xl font-bold mb-4">{t('ready_grow')}</h3>
             <p className="text-lg text-muted-foreground mb-8">{t('join_copy')}</p>
-            <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-12">
+            <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 sm:px-12">
               {t('cta_get_started')}
             </Button>
           </CardContent>
@@ -122,7 +122,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border bg-card/50 py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>{t('footer_text')}</p>
+          <p>{t('footer_text', { year: new Date().getFullYear() })}</p>
         </div>
       </footer>
     </div>

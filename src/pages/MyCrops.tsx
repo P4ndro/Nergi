@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { format, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,16 +16,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ArrowLeft, Leaf, Calendar as CalendarIcon, MapPin, Package2, Trash2, Eye, Plus, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Leaf, Calendar as CalendarIcon, MapPin, Package2, Trash2, Eye, Plus } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
-import { formatDistanceToNow } from "date-fns";
+import RecommendationDisplay from "@/components/RecommendationDisplay";
+import ChemicalLog from "@/components/ChemicalLog";
+import CropNotes from "@/components/CropNotes";
+import { dateLocale, longDatePattern } from "@/i18n";
+import { computePlanStartDate, parseDateOnly, parseStoredRecommendation, toDateOnly } from "@/lib/recommendation";
+import type { Json } from "@/integrations/supabase/types";
+
+type CropStatus = "planned" | "planted" | "harvested";
+const STATUSES: CropStatus[] = ["planned", "planted", "harvested"];
 
 interface UserCrop {
   id: string;
@@ -36,43 +41,48 @@ interface UserCrop {
   area_value: number | null;
   area_unit: string | null;
   field_name: string | null;
+  notes: string | null;
   suitability_verdict: string | null;
-  recommendations: any;
+  recommendations: Json | null;
   created_at: string;
 }
 
+/** Plans saved before planStartDate was stored: rebuild the start from the dates we do have. */
+function legacyPlanStart(crop: UserCrop): Date {
+  const created = new Date(crop.created_at);
+  const status = crop.status === "planned" ? "planned" : "planted";
+  return parseDateOnly(computePlanStartDate(status, crop.planned_date ?? "", created)) ?? created;
+}
+
+const STATUS_STYLE: Record<string, string> = {
+  planted: "bg-green-500/10 text-green-700 border-green-500/20",
+  planned: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  harvested: "bg-amber-500/10 text-amber-800 border-amber-500/20",
+};
+
+const VERDICT_STYLE: Record<string, string> = {
+  Plantable: "bg-green-600 hover:bg-green-600",
+  Caution: "bg-yellow-500 hover:bg-yellow-500 text-black",
+  "Not recommended": "bg-red-600 hover:bg-red-600",
+};
+
 const MyCrops = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const locale = dateLocale();
   const [crops, setCrops] = useState<UserCrop[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cropToDelete, setCropToDelete] = useState<string | null>(null);
-  const [selectedCrop, setSelectedCrop] = useState<UserCrop | null>(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    loadCrops();
-  }, []);
+  const selectedCrop = crops.find((crop) => crop.id === selectedId) ?? null;
+  const selectedRecommendation = selectedCrop ? parseStoredRecommendation(selectedCrop.recommendations) : null;
 
-  // Auto-open latest crop if URL has query param
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const openLatest = urlParams.get('open');
-    
-    if (openLatest === 'true' && crops.length > 0 && !viewDialogOpen) {
-      const timer = setTimeout(() => {
-        // Open the most recently added crop
-        setSelectedCrop(crops[0]);
-        setViewDialogOpen(true);
-        // Clean up URL
-        window.history.replaceState({}, '', '/my-crops');
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [crops.length]);
+  const formatDateOnly = (value: string) =>
+    format(parseDateOnly(value) ?? new Date(value), longDatePattern(), { locale });
 
-  const loadCrops = async () => {
+  const loadCrops = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -88,64 +98,61 @@ const MyCrops = () => {
 
       if (error) throw error;
       setCrops(data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error loading crops:", error);
-      toast.error("Failed to load crops");
+      toast.error(t("mc_load_failed"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, t]);
+
+  useEffect(() => {
+    loadCrops();
+  }, [loadCrops]);
+
+  // Auto-open the newest crop after saving (AddCrop navigates here with ?open=true)
+  useEffect(() => {
+    if (searchParams.get("open") === "true" && crops.length > 0) {
+      setSelectedId(crops[0].id);
+      setSearchParams({}, { replace: true });
+    }
+  }, [crops, searchParams, setSearchParams]);
 
   const handleDeleteCrop = async (cropId: string) => {
     try {
-      const { error } = await supabase
-        .from("user_crops")
-        .delete()
-        .eq("id", cropId);
-
+      const { error } = await supabase.from("user_crops").delete().eq("id", cropId);
       if (error) throw error;
-      
-      toast.success("Crop deleted successfully");
-      setCrops(crops.filter(crop => crop.id !== cropId));
-    } catch (error: any) {
+      toast.success(t("mc_deleted"));
+      setCrops((current) => current.filter((crop) => crop.id !== cropId));
+    } catch (error) {
       console.error("Error deleting crop:", error);
-      toast.error("Failed to delete crop");
+      toast.error(t("mc_delete_failed"));
     } finally {
-      setDeleteDialogOpen(false);
       setCropToDelete(null);
     }
   };
 
-  const getVerdictColor = (verdict: string | null) => {
-    if (!verdict) return "bg-secondary";
-    switch (verdict.toLowerCase()) {
-      case "plantable":
-        return "bg-green-500";
-      case "caution":
-        return "bg-yellow-500";
-      case "not recommended":
-        return "bg-red-500";
-      default:
-        return "bg-secondary";
+  const handleStatusChange = async (crop: UserCrop, status: CropStatus) => {
+    if (status === crop.status) return;
+    const patch: Partial<UserCrop> = { status };
+    // Marking a crop as planted records the planting date if it wasn't known yet.
+    if (status === "planted" && !crop.planting_date) {
+      const planned = parseDateOnly(crop.planned_date);
+      patch.planting_date = planned && planned <= new Date() ? crop.planned_date : toDateOnly(new Date());
+    }
+    try {
+      const { error } = await supabase.from("user_crops").update(patch).eq("id", crop.id);
+      if (error) throw error;
+      setCrops((current) => current.map((c) => (c.id === crop.id ? { ...c, ...patch } : c)));
+      toast.success(t("mc_status_updated"));
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error(t("mc_status_failed"));
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "planted":
-        return "bg-green-500/10 text-green-600 border-green-500/20";
-      case "planned":
-        return "bg-blue-500/10 text-blue-600 border-blue-500/20";
-      default:
-        return "bg-secondary";
-    }
-  };
-
-
-  const handleViewCrop = (crop: UserCrop) => {
-    setSelectedCrop(crop);
-    setViewDialogOpen(true);
-  };
+  const statusLabel = (status: string) => t(`status_${status}`, { defaultValue: status });
+  const verdictLabel = (verdict: string) => t(`verdict_${verdict}`, { defaultValue: verdict });
 
   if (loading) {
     return (
@@ -154,7 +161,7 @@ const MyCrops = () => {
         <div className="container mx-auto px-4 py-8 flex items-center justify-center">
           <div className="text-center">
             <Leaf className="w-12 h-12 text-primary animate-pulse mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading your crops...</p>
+            <p className="text-muted-foreground">{t("mc_loading")}</p>
           </div>
         </div>
       </div>
@@ -166,21 +173,19 @@ const MyCrops = () => {
       <Navbar />
 
       <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/dashboard")} size="icon">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={() => navigate("/dashboard")} size="icon" aria-label={t("ac_back")}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">My Crops</h1>
-              <p className="text-muted-foreground">
-                Manage and track all your crops
-              </p>
+              <h1 className="text-3xl font-bold">{t("my_crops")}</h1>
+              <p className="text-muted-foreground">{t("mc_subtitle")}</p>
             </div>
           </div>
           <Button onClick={() => navigate("/add-crop")}>
             <Plus className="w-4 h-4 mr-2" />
-            Add Crop
+            {t("add_crop")}
           </Button>
         </div>
 
@@ -188,109 +193,80 @@ const MyCrops = () => {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Leaf className="w-16 h-16 text-muted-foreground/50 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No crops yet</h3>
-              <p className="text-muted-foreground mb-6 text-center max-w-md">
-                Get started by adding your first crop. Track planting dates, receive recommendations, and manage your farm.
-              </p>
+              <h3 className="text-xl font-semibold mb-2">{t("mc_empty_title")}</h3>
+              <p className="text-muted-foreground mb-6 text-center max-w-md">{t("mc_empty_body")}</p>
               <Button onClick={() => navigate("/add-crop")}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Your First Crop
+                {t("mc_empty_cta")}
               </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {crops.map((crop) => (
-              <Card key={crop.id} className="hover:shadow-lg transition-shadow">
+              <Card key={crop.id} className="hover:shadow-lg transition-shadow flex flex-col">
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Leaf className="w-5 h-5 text-primary" />
-                        {crop.crop_name}
-                      </CardTitle>
-                      {crop.variety && (
-                        <CardDescription className="mt-1">
-                          {crop.variety}
-                        </CardDescription>
-                      )}
-                    </div>
-                  </div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Leaf className="w-5 h-5 text-primary" />
+                    {crop.crop_name}
+                  </CardTitle>
+                  {crop.variety && <CardDescription className="mt-1">{crop.variety}</CardDescription>}
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Status and Verdict */}
+                <CardContent className="space-y-4 flex-1 flex flex-col">
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline" className={getStatusColor(crop.status)}>
-                      {crop.status}
+                    <Badge variant="outline" className={STATUS_STYLE[crop.status] ?? ""}>
+                      {statusLabel(crop.status)}
                     </Badge>
                     {crop.suitability_verdict && (
-                      <Badge className={getVerdictColor(crop.suitability_verdict)}>
-                        {crop.suitability_verdict}
+                      <Badge className={VERDICT_STYLE[crop.suitability_verdict] ?? ""}>
+                        {verdictLabel(crop.suitability_verdict)}
                       </Badge>
                     )}
                   </div>
 
-                  {/* Dates */}
-                  <div className="space-y-2 text-sm">
-                    {crop.status === "planted" && crop.planting_date && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    {crop.status !== "planned" && crop.planting_date && (
+                      <div className="flex items-center gap-2">
                         <CalendarIcon className="w-4 h-4" />
-                        <span>
-                          Planted: {new Date(crop.planting_date).toLocaleDateString()}
-                        </span>
+                        <span>{t("mc_planted_on", { date: formatDateOnly(crop.planting_date) })}</span>
                       </div>
                     )}
                     {crop.status === "planned" && crop.planned_date && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="flex items-center gap-2">
                         <CalendarIcon className="w-4 h-4" />
+                        <span>{t("mc_planned_for", { date: formatDateOnly(crop.planned_date) })}</span>
+                      </div>
+                    )}
+                    {crop.area_value != null && (
+                      <div className="flex items-center gap-2">
+                        <Package2 className="w-4 h-4" />
                         <span>
-                          Planned: {new Date(crop.planned_date).toLocaleDateString()}
+                          {crop.area_value} {crop.area_unit === "m2" ? "m²" : crop.area_unit}
                         </span>
+                      </div>
+                    )}
+                    {crop.field_name && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        <span>{crop.field_name}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Area */}
-                  {crop.area_value && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Package2 className="w-4 h-4" />
-                      <span>
-                        {crop.area_value} {crop.area_unit}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Field Name */}
-                  {crop.field_name && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4" />
-                      <span>{crop.field_name}</span>
-                    </div>
-                  )}
-
-                  {/* Created Time */}
-                  <div className="text-xs text-muted-foreground">
-                    Added {formatDistanceToNow(new Date(crop.created_at), { addSuffix: true })}
+                  <div className="text-xs text-muted-foreground mt-auto">
+                    {t("mc_added", { when: formatDistanceToNow(new Date(crop.created_at), { addSuffix: true, locale }) })}
                   </div>
 
-                  {/* Actions */}
                   <div className="flex gap-2 pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleViewCrop(crop)}
-                    >
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedId(crop.id)}>
                       <Eye className="w-4 h-4 mr-2" />
-                      View
+                      {t("view")}
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => {
-                        setCropToDelete(crop.id);
-                        setDeleteDialogOpen(true);
-                      }}
+                      aria-label={t("delete")}
+                      onClick={() => setCropToDelete(crop.id)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -303,171 +279,88 @@ const MyCrops = () => {
       </main>
 
       {/* View Crop Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+      <Dialog open={selectedCrop !== null} onOpenChange={(open) => !open && setSelectedId(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Leaf className="w-5 h-5 text-primary" />
               {selectedCrop?.crop_name} {selectedCrop?.variety && `- ${selectedCrop.variety}`}
             </DialogTitle>
+            {selectedCrop?.field_name && <DialogDescription>{selectedCrop.field_name}</DialogDescription>}
           </DialogHeader>
-          
+
           {selectedCrop && (
             <div className="space-y-6">
-              {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge className={getStatusColor(selectedCrop.status)}>
-                    {selectedCrop.status}
-                  </Badge>
+                <div className="space-y-1.5">
+                  <p className="text-sm text-muted-foreground">{t("mc_status")}</p>
+                  <Select
+                    value={selectedCrop.status}
+                    onValueChange={(value) => handleStatusChange(selectedCrop, value as CropStatus)}
+                  >
+                    <SelectTrigger className="w-full sm:w-48" aria-label={t("mc_status")}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {statusLabel(status)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Suitability</p>
+                <div className="space-y-1.5">
+                  <p className="text-sm text-muted-foreground">{t("mc_suitability")}</p>
                   {selectedCrop.suitability_verdict && (
-                    <Badge className={getVerdictColor(selectedCrop.suitability_verdict)}>
-                      {selectedCrop.suitability_verdict}
+                    <Badge className={VERDICT_STYLE[selectedCrop.suitability_verdict] ?? ""}>
+                      {verdictLabel(selectedCrop.suitability_verdict)}
                     </Badge>
                   )}
                 </div>
               </div>
 
-              {/* Summary */}
-              {selectedCrop.recommendations?.summary && (
-                <Alert>
-                  <AlertDescription>{selectedCrop.recommendations.summary}</AlertDescription>
-                </Alert>
+              <CropNotes
+                key={selectedCrop.id}
+                cropId={selectedCrop.id}
+                initialNotes={selectedCrop.notes}
+                onSaved={(notes) =>
+                  setCrops((current) => current.map((c) => (c.id === selectedCrop.id ? { ...c, notes } : c)))
+                }
+              />
+
+              {selectedRecommendation ? (
+                <RecommendationDisplay
+                  recommendation={selectedRecommendation}
+                  fallbackStartDate={legacyPlanStart(selectedCrop)}
+                  startsOnPlantingDay={
+                    !!selectedRecommendation.planStartDate &&
+                    selectedRecommendation.planStartDate === selectedCrop.planned_date
+                  }
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">{t("mc_no_rec")}</p>
               )}
 
-              {/* Actions */}
-              {selectedCrop.recommendations?.actions && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Top Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ol className="space-y-2">
-                      {selectedCrop.recommendations.actions.map((action: string, idx: number) => (
-                        <li key={idx} className="flex gap-2">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                            {idx + 1}
-                          </span>
-                          <p className="text-sm">{action}</p>
-                        </li>
-                      ))}
-                    </ol>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Weekly Calendar */}
-              {selectedCrop.recommendations?.calendar && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CalendarIcon className="w-5 h-5" />
-                      4-Week Plan
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {selectedCrop.recommendations.calendar.map((week: any) => (
-                        <div key={week.week} className="border-l-2 border-primary pl-4">
-                          <p className="font-semibold mb-2">Week {week.week}</p>
-                          <ul className="space-y-1">
-                            {week.tasks.map((task: string, idx: number) => {
-                              const isMedicineTask = task.toLowerCase().includes("spray") ||
-                                task.toLowerCase().includes("pesticide") ||
-                                task.toLowerCase().includes("fungicide") ||
-                                task.toLowerCase().includes("medicine") ||
-                                task.toLowerCase().includes("apply") ||
-                                task.toLowerCase().includes("chemical");
-                              return (
-                                <li
-                                  key={idx}
-                                  className={`text-sm ${isMedicineTask ? "text-green-600 font-medium" : "text-muted-foreground"}`}
-                                >
-                                  • {task}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Risks */}
-              {selectedCrop.recommendations?.risks && selectedCrop.recommendations.risks.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Risk Assessment</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {selectedCrop.recommendations.risks.map((risk: any, idx: number) => (
-                      <Alert key={idx}>
-                        <AlertDescription>
-                          <div className="flex items-start gap-2 justify-between mb-2">
-                            <Badge variant="outline" className={
-                              risk.severity === "Low" ? "text-green-600" :
-                              risk.severity === "Moderate" ? "text-yellow-600" :
-                              "text-red-600"
-                            }>
-                              {risk.severity}
-                            </Badge>
-                            <Badge variant="secondary">{risk.type}</Badge>
-                          </div>
-                          <p className="text-sm mb-1">{risk.description}</p>
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-medium">Mitigation:</span> {risk.mitigation}
-                          </p>
-                        </AlertDescription>
-                      </Alert>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Soil Amendments */}
-              {selectedCrop.recommendations?.soilAmendments && selectedCrop.recommendations.soilAmendments.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Soil Amendments</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {selectedCrop.recommendations.soilAmendments.map((amendment: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="text-primary">•</span>
-                          <span className="text-sm">{amendment}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
+              <ChemicalLog cropId={selectedCrop.id} />
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={cropToDelete !== null} onOpenChange={(open) => !open && setCropToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the crop and all associated data.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("mc_delete_title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("mc_delete_body")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => cropToDelete && handleDeleteCrop(cropToDelete)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -477,4 +370,3 @@ const MyCrops = () => {
 };
 
 export default MyCrops;
-
