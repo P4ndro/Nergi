@@ -1,102 +1,39 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertTriangle, XCircle, Beaker } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { useMemo, useState } from "react";
-import { addDays, differenceInCalendarDays, format, startOfDay } from "date-fns";
-
-interface Risk {
-  type: string;
-  severity: "Low" | "Moderate" | "High";
-  description: string;
-  mitigation: string;
-}
-
-interface CalendarWeek {
-  week: number;
-  tasks: string[];
-}
+import { CheckCircle, AlertTriangle, XCircle, Beaker, CloudSun } from "lucide-react";
+import PlanCalendar from "@/components/PlanCalendar";
+import { parseDateOnly, type Recommendation } from "@/lib/recommendation";
 
 interface RecommendationProps {
-  recommendation: {
-    verdict: "Plantable" | "Caution" | "Not recommended";
-    summary: string;
-    actions: string[];
-    calendar: CalendarWeek[];
-    risks: Risk[];
-    soilAmendments?: string[];
-    usedFields?: string[];
-    soilReportSummary?: {
-      pH?: number | null;
-      EC?: number | null;
-      OM_percent?: number | null;
-      N_ppm?: number | null;
-      P_ppm?: number | null;
-      K_ppm?: number | null;
-      CEC?: number | null;
-      Fe_ppm?: number | null;
-      Zn_ppm?: number | null;
-      Mn_ppm?: number | null;
-      Cu_ppm?: number | null;
-      B_ppm?: number | null;
-      notes?: string | null;
-    } | null;
-    soilReportHuman?: string | null;
-    soilReportDetails?: Array<{
-      name: string;
-      value: number | string | null;
-      unit?: string | null;
-      optimalRange?: string | null;
-      comparison?: string | null;
-      explanation?: string | null;
-    }> | null;
-    soilReportRawExcerpt?: string | null;
-  };
+  recommendation: Recommendation;
+  /** Used for plans saved before planStartDate was stored. */
+  fallbackStartDate?: Date;
+  startLabel?: string;
 }
 
-const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => startOfDay(new Date()));
-  const recommendationStartDate = useMemo(() => startOfDay(new Date()), []);
+const SOIL_LABELS: Record<string, string> = {
+  pH: "pH",
+  EC: "EC (dS/m)",
+  OM_percent: "Organic matter (%)",
+  N_ppm: "Nitrogen (ppm)",
+  P_ppm: "Phosphorus (ppm)",
+  K_ppm: "Potassium (ppm)",
+  CEC: "CEC",
+  Fe_ppm: "Iron (ppm)",
+  Zn_ppm: "Zinc (ppm)",
+  Mn_ppm: "Manganese (ppm)",
+  Cu_ppm: "Copper (ppm)",
+  B_ppm: "Boron (ppm)",
+};
 
-  const medicineDates = useMemo(() => {
-    const dates: Date[] = [];
-    
-    if (recommendation.calendar && recommendation.calendar.length > 0) {
-      recommendation.calendar.forEach((week) => {
-        week.tasks.forEach((task) => {
-          // Check if task involves medicine, pesticide, or spray
-          const lowerTask = task.toLowerCase();
-          if (
-            lowerTask.includes("spray") ||
-            lowerTask.includes("pesticide") ||
-            lowerTask.includes("fungicide") ||
-            lowerTask.includes("medicine") ||
-            lowerTask.includes("apply") ||
-            lowerTask.includes("chemical")
-          ) {
-            const daysToAdd = (week.week - 1) * 7 + 3;
-            dates.push(addDays(recommendationStartDate, daysToAdd));
-          }
-        });
-      });
-    }
-    
-    return dates;
-  }, [recommendation.calendar, recommendationStartDate]);
-
-  const selectedWeek = useMemo(() => {
-    if (!selectedDate) return undefined;
-
-    const daysSinceStart = differenceInCalendarDays(
-      startOfDay(selectedDate),
-      recommendationStartDate,
-    );
-    if (daysSinceStart < 0) return undefined;
-
-    const weekNumber = Math.floor(daysSinceStart / 7) + 1;
-    return recommendation.calendar.find((week) => week.week === weekNumber);
-  }, [recommendation.calendar, recommendationStartDate, selectedDate]);
+const RecommendationDisplay = ({ recommendation, fallbackStartDate, startLabel }: RecommendationProps) => {
+  const planStart = parseDateOnly(recommendation.planStartDate) ?? fallbackStartDate ?? new Date();
+  const soilEntries = recommendation.soilReportSummary
+    ? Object.entries(recommendation.soilReportSummary).filter(
+        ([key, value]) => key !== "notes" && value !== null && value !== undefined,
+      )
+    : [];
 
   const getVerdictIcon = () => {
     switch (recommendation.verdict) {
@@ -135,136 +72,41 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
 
   return (
     <div className="mt-6 space-y-6">
-      {/* ==== SOIL REPORT ANALYSIS FIRST ==== */}
-      {recommendation.soilReportHuman && (
-        <>
-          {/* Main Header for Soil Analysis Section */}
-          <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Beaker className="w-6 h-6 text-primary" />
-                Your Soil Report Analysis
-              </CardTitle>
-              <CardDescription className="text-base">
-                AI has read your lab report and extracted all the important details below
-              </CardDescription>
-            </CardHeader>
-          </Card>
+      {recommendation.weatherIsEstimate && (
+        <Alert className="border-warning/40 bg-warning/5">
+          <CloudSun className="h-4 w-4" />
+          <AlertDescription>
+            Live weather was not available, so this recommendation used general seasonal estimates. Set your
+            location on the dashboard for advice based on your local forecast.
+          </AlertDescription>
+        </Alert>
+      )}
 
-          {/* Human-Readable Summary */}
-          <Card className="border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                📊 Overall Assessment
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-base leading-7 text-foreground">{recommendation.soilReportHuman}</p>
-            </CardContent>
-          </Card>
-
-          {/* Detailed Parameter-by-Parameter Breakdown */}
-          {recommendation.soilReportDetails && recommendation.soilReportDetails.length > 0 && (
-            <Card className="border-primary/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  🔬 Detailed Analysis - Every Parameter Explained
-                </CardTitle>
-                <CardDescription>
-                  What each value in your soil report means for your crops
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recommendation.soilReportDetails.map((row, idx) => (
-                    <div key={idx} className="p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-lg text-foreground">{row.name}</h4>
-                          {row.optimalRange && (
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              Optimal range: {row.optimalRange}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right ml-4">
-                          <div className="text-2xl font-bold text-primary">
-                            {row.value}
-                            {row.unit && <span className="text-base font-normal text-muted-foreground ml-1">{row.unit}</span>}
-                          </div>
-                          {row.comparison && (
-                            <p className="text-xs text-muted-foreground mt-1">{row.comparison}</p>
-                          )}
-                        </div>
-                      </div>
-                      {row.explanation && (
-                        <div className="mt-2 pt-2 border-t">
-                          <p className="text-sm leading-6 text-foreground/80">
-                            {row.explanation}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+      {soilEntries.length > 0 && (
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Beaker className="w-5 h-5 text-primary" />
+              Your Soil Report
+            </CardTitle>
+            <CardDescription>Values read from the report you uploaded</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {soilEntries.map(([key, value]) => (
+                <div key={key} className="p-3 rounded border bg-muted/40">
+                  <p className="text-xs text-muted-foreground mb-1">{SOIL_LABELS[key] ?? key}</p>
+                  <p className="font-bold text-foreground">{String(value)}</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Quick Reference Summary Grid */}
-          {recommendation.soilReportSummary && (
-            <Card className="border-muted">
-              <CardHeader>
-                <CardTitle className="text-base">Quick Reference - All Values</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {Object.entries(recommendation.soilReportSummary).map(([k, v]) =>
-                    v !== null && v !== undefined && k !== 'notes' ? (
-                      <div key={k} className="p-3 rounded border bg-muted/40">
-                        <p className="text-xs text-muted-foreground mb-1">{k.replace(/_/g, ' ')}</p>
-                        <p className="font-bold text-foreground">{String(v)}</p>
-                      </div>
-                    ) : null
-                  )}
-                </div>
-                {recommendation.soilReportSummary.notes && (
-                  <div className="mt-4 p-3 rounded bg-muted/30 border-l-4 border-primary">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Technical Notes:</p>
-                    <p className="text-xs text-muted-foreground">{recommendation.soilReportSummary.notes}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Raw Report Excerpt */}
-          {recommendation.soilReportRawExcerpt && (
-            <Card className="border-muted">
-              <CardHeader>
-                <CardTitle className="text-base">Original Report Text</CardTitle>
-                <CardDescription>Raw data from your uploaded file</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <pre className="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground border rounded p-3 bg-muted/20 font-mono">
-                  {recommendation.soilReportRawExcerpt}
-                </pre>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Divider before recommendations */}
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t-2 border-primary/20"></div>
+              ))}
             </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-4 text-sm font-medium text-muted-foreground">
-                📋 Based on this soil analysis, here are your crop recommendations
-              </span>
-            </div>
-          </div>
-        </>
+            {recommendation.soilReportSummary?.notes && (
+              <p className="mt-4 text-sm text-muted-foreground border-l-4 border-primary pl-3">
+                {recommendation.soilReportSummary.notes}
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* ==== CROP RECOMMENDATIONS BELOW ==== */}
@@ -284,8 +126,8 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Top 3 Actions</CardTitle>
-          <CardDescription>Immediate steps to take</CardDescription>
+          <CardTitle>Key Actions</CardTitle>
+          <CardDescription>Most important steps to take</CardDescription>
         </CardHeader>
         <CardContent>
           <ol className="space-y-3">
@@ -302,7 +144,7 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
       </Card>
 
       {/* Soil Amendments */}
-      {recommendation.soilAmendments && recommendation.soilAmendments.length > 0 && (
+      {recommendation.soilAmendments.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -323,73 +165,20 @@ const RecommendationDisplay = ({ recommendation }: RecommendationProps) => {
         </Card>
       )}
 
-      {/* Calendar with Medicine Dates */}
-      {recommendation.calendar && recommendation.calendar.length > 0 && (
+      {recommendation.calendar.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Task Calendar</CardTitle>
-            <CardDescription>
-              Select a date to view the tasks for that recommendation week. Green dates mark application-related tasks.
-            </CardDescription>
+            <CardTitle>4-Week Plan</CardTitle>
+            <CardDescription>Pick a date or a week to see what to do.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                <div className="w-4 h-4 rounded bg-green-500"></div>
-                <span>Medicine/Pesticide Application Dates</span>
-              </div>
-              
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                className="rounded-md border"
-                classNames={{
-                  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-                }}
-                modifiers={{
-                  medicineDays: medicineDates,
-                }}
-                modifiersClassNames={{
-                  medicineDays: "bg-green-500 text-white hover:bg-green-600 focus:bg-green-600",
-                }}
-              />
-
-              <div className="mt-6 rounded-md border bg-muted/30 p-4" aria-live="polite">
-                <h3 className="font-semibold text-sm">
-                  {selectedDate ? `Tasks for ${format(selectedDate, "MMMM d, yyyy")}` : "Select a date"}
-                </h3>
-                {selectedWeek && selectedDate ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Recommendation Week {selectedWeek.week} ({format(addDays(recommendationStartDate, (selectedWeek.week - 1) * 7), "MMM d")}–{format(addDays(recommendationStartDate, selectedWeek.week * 7 - 1), "MMM d, yyyy")})
-                    </p>
-                    {selectedWeek.tasks.length > 0 ? (
-                      <ul className="space-y-2">
-                        {selectedWeek.tasks.map((task, idx) => (
-                          <li key={idx} className="text-sm text-foreground">
-                            • {task}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No tasks are listed for this week.</p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    No recommendation tasks for this date. Choose a date within the next four weeks.
-                  </p>
-                )}
-              </div>
-            </div>
+            <PlanCalendar weeks={recommendation.calendar} startDate={planStart} startLabel={startLabel} />
           </CardContent>
         </Card>
       )}
 
       {/* Risks */}
-      {recommendation.risks && recommendation.risks.length > 0 && (
+      {recommendation.risks.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Risk Assessment</CardTitle>

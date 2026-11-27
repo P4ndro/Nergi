@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,7 @@ import {
 
 const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
-  const [lang, setLang] = useState<string>("en");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("nergi_lang");
-    if (saved) setLang(saved);
-  }, []);
+  const [lang, setLang] = useState<string>(i18n.language || "en");
 
   const choose = (lng: string) => {
     setLang(lng);

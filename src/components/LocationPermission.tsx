@@ -65,7 +65,9 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
     setBusyAction("location");
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        void saveLocation(coords.latitude, coords.longitude, determineRegion(coords.latitude, coords.longitude));
+        void describeLocation(coords.latitude, coords.longitude).then((label) =>
+          saveLocation(coords.latitude, coords.longitude, label),
+        );
       },
       (error) => {
         console.error("Geolocation error:", error);
@@ -120,13 +122,21 @@ const LocationPermission = ({ onLocationGranted, onSkip }: LocationPermissionPro
     void saveLocation(location.lat, location.lon, label);
   };
 
-  const determineRegion = (lat: number, lon: number): string => {
-    // Simplified region detection for Georgia
-    // In production, use proper geocoding service
-    if (lat > 42.5 && lon < 42) return "Samegrelo";
-    if (lat > 41.5 && lon > 45) return "Kakheti";
-    if (lat > 42 && lon > 43) return "Kartli";
-    return "Georgia";
+  // Turns coordinates into a readable place name using the weather service's lookup.
+  const describeLocation = async (lat: number, lon: number): Promise<string> => {
+    const fallback = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+    if (!WEATHER_API_KEY) return fallback;
+    try {
+      const params = new URLSearchParams({ key: WEATHER_API_KEY, q: `${lat},${lon}` });
+      const response = await fetch(`https://api.weatherapi.com/v1/search.json?${params}`);
+      if (!response.ok) return fallback;
+      const data: unknown = await response.json();
+      const place = Array.isArray(data) ? (data[0] as Partial<LocationSearchResult> | undefined) : undefined;
+      if (!place?.name) return fallback;
+      return [place.name, place.region, place.country].filter(Boolean).join(", ");
+    } catch {
+      return fallback;
+    }
   };
 
   return (

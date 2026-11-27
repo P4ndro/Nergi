@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Leaf, MapPin, Plus, AlertTriangle, TrendingUp, Droplets } from "lucide-react";
+import { Leaf, MapPin, Plus, AlertTriangle, TrendingUp, CloudSun } from "lucide-react";
 import { toast } from "sonner";
 import LocationPermission from "@/components/LocationPermission";
 import Navbar from "@/components/Navbar";
 import type { Json } from "@/integrations/supabase/types";
+import { fetchWeatherData, type WeatherData } from "@/lib/weather-api";
+import { parseStoredRecommendation } from "@/lib/recommendation";
 
 interface Profile {
   id: string;
@@ -40,17 +42,14 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [cropCount, setCropCount] = useState(0);
   const [showLocationSetup, setShowLocationSetup] = useState(false);
+  const [highRiskCount, setHighRiskCount] = useState(0);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const hasLocation = profile?.location_lat != null && profile.location_lon != null;
 
-  useEffect(() => {
-    loadProfile();
-    loadCropCount();
-  }, []);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         navigate("/auth");
         return;
@@ -60,40 +59,62 @@ const Dashboard = () => {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       setProfile(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error loading profile:", error);
       toast.error("Failed to load profile");
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
-  const loadCropCount = async () => {
+  const loadCrops = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) return;
 
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from('user_crops')
-        .select('*', { count: 'exact', head: true })
+        .select('status, recommendations')
         .eq('user_id', user.id);
 
       if (error) throw error;
-      setCropCount(count || 0);
-    } catch (error: any) {
-      console.error("Error loading crop count:", error);
+      const active = (data ?? []).filter((crop) => crop.status !== "harvested");
+      setCropCount(active.length);
+      setHighRiskCount(
+        active.reduce((total, crop) => {
+          const rec = parseStoredRecommendation(crop.recommendations);
+          return total + (rec?.risks.filter((risk) => risk.severity === "High").length ?? 0);
+        }, 0),
+      );
+    } catch (error) {
+      console.error("Error loading crops:", error);
     }
-  };
+  }, []);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
+  useEffect(() => {
+    loadProfile();
+    loadCrops();
+  }, [loadProfile, loadCrops]);
+
+  useEffect(() => {
+    const lat = profile?.location_lat;
+    const lon = profile?.location_lon;
+    if (lat == null || lon == null) {
+      setWeather(null);
+      return;
+    }
+    let cancelled = false;
+    fetchWeatherData(lat, lon).then((data) => {
+      if (!cancelled) setWeather(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.location_lat, profile?.location_lon]);
 
   if (loading) {
     return (
@@ -183,12 +204,12 @@ const Dashboard = () => {
                 {t('alerts')}
               </CardTitle>
               <CardDescription>
-                Current warnings and recommendations
+                From your saved crop recommendations
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">0</p>
-              <p className="text-sm text-muted-foreground">{t('active_alerts')}</p>
+              <p className="text-3xl font-bold">{highRiskCount}</p>
+              <p className="text-sm text-muted-foreground">High-severity risks across your crops</p>
             </CardContent>
           </Card>
         </div>
@@ -211,7 +232,7 @@ const Dashboard = () => {
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                   {/* pH Level */}
-                  {soilData.pH && (
+                  {typeof soilData.pH === "number" && (
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-muted-foreground">pH Level</p>
                       <p className="text-2xl font-bold">{soilData.pH.toFixed(1)}</p>
@@ -297,21 +318,41 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {hasLocation && (
-          <Card className="border-warning/40 bg-warning/5">
+        {hasLocation && weather && (
+          <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-warning">
-                <AlertTriangle className="w-5 h-5" />
-                {t('weather_alert')}
+              <CardTitle className="flex items-center gap-2">
+                <CloudSun className="w-5 h-5 text-primary" />
+                Weather{profile?.location_region ? ` - ${profile.location_region}` : ""}
               </CardTitle>
+              <CardDescription>
+                {weather.isEstimate
+                  ? "Live weather is unavailable right now. These are general estimates, not your local forecast."
+                  : "Current conditions and the 7-day outlook"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">
-                <span className="font-medium">{t('fungal_risk_moderate')}</span> {t('weather_risk_copy')}
-              </p>
-              <Button variant="outline" size="sm" className="mt-4">
-                {t('view_details')}
-              </Button>
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Now</p>
+                  <p className="text-2xl font-bold">{Math.round(weather.currentTemp)}°C</p>
+                  <p className="text-xs text-muted-foreground">{weather.description}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">7-day range</p>
+                  <p className="text-2xl font-bold">
+                    {Math.round(weather.tempMin)}° / {Math.round(weather.tempMax)}°
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Humidity</p>
+                  <p className="text-2xl font-bold">{weather.humidity}%</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Rain (7 days)</p>
+                  <p className="text-2xl font-bold">{Math.round(weather.rainfall)} mm</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

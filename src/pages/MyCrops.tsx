@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +20,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Leaf, Calendar as CalendarIcon, MapPin, Package2, Trash2, Eye, Plus, X } from "lucide-react";
+import { ArrowLeft, Leaf, Calendar as CalendarIcon, MapPin, Package2, Trash2, Eye, Plus } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import { formatDistanceToNow } from "date-fns";
+import RecommendationDisplay from "@/components/RecommendationDisplay";
+import {
+  computePlanStartDate,
+  parseDateOnly,
+  parseStoredRecommendation,
+  type Recommendation,
+} from "@/lib/recommendation";
+import type { Json } from "@/integrations/supabase/types";
 
 interface UserCrop {
   id: string;
@@ -37,8 +44,25 @@ interface UserCrop {
   area_unit: string | null;
   field_name: string | null;
   suitability_verdict: string | null;
-  recommendations: any;
+  recommendations: Json | null;
   created_at: string;
+}
+
+/** Plans saved before planStartDate was stored: rebuild the start from the dates we do have. */
+function legacyPlanStart(crop: UserCrop): Date {
+  const created = new Date(crop.created_at);
+  const status = crop.status === "planned" ? "planned" : "planted";
+  return parseDateOnly(computePlanStartDate(status, crop.planned_date ?? "", created)) ?? created;
+}
+
+function planStartLabel(crop: UserCrop, rec: Recommendation): string {
+  const start = rec.planStartDate;
+  if (crop.status === "planned" && start && start === crop.planned_date) return "Planting day";
+  return "Plan starts";
+}
+
+function formatDateOnly(value: string): string {
+  return (parseDateOnly(value) ?? new Date(value)).toLocaleDateString();
 }
 
 const MyCrops = () => {
@@ -49,30 +73,19 @@ const MyCrops = () => {
   const [cropToDelete, setCropToDelete] = useState<string | null>(null);
   const [selectedCrop, setSelectedCrop] = useState<UserCrop | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedRecommendation = selectedCrop ? parseStoredRecommendation(selectedCrop.recommendations) : null;
 
+  // Auto-open the newest crop after saving (AddCrop navigates here with ?open=true)
   useEffect(() => {
-    loadCrops();
-  }, []);
-
-  // Auto-open latest crop if URL has query param
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const openLatest = urlParams.get('open');
-    
-    if (openLatest === 'true' && crops.length > 0 && !viewDialogOpen) {
-      const timer = setTimeout(() => {
-        // Open the most recently added crop
-        setSelectedCrop(crops[0]);
-        setViewDialogOpen(true);
-        // Clean up URL
-        window.history.replaceState({}, '', '/my-crops');
-      }, 100);
-      
-      return () => clearTimeout(timer);
+    if (searchParams.get("open") === "true" && crops.length > 0) {
+      setSelectedCrop(crops[0]);
+      setViewDialogOpen(true);
+      setSearchParams({}, { replace: true });
     }
-  }, [crops.length]);
+  }, [crops, searchParams, setSearchParams]);
 
-  const loadCrops = async () => {
+  const loadCrops = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -88,13 +101,17 @@ const MyCrops = () => {
 
       if (error) throw error;
       setCrops(data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error loading crops:", error);
       toast.error("Failed to load crops");
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    loadCrops();
+  }, [loadCrops]);
 
   const handleDeleteCrop = async (cropId: string) => {
     try {
@@ -106,8 +123,8 @@ const MyCrops = () => {
       if (error) throw error;
       
       toast.success("Crop deleted successfully");
-      setCrops(crops.filter(crop => crop.id !== cropId));
-    } catch (error: any) {
+      setCrops((current) => current.filter((crop) => crop.id !== cropId));
+    } catch (error) {
       console.error("Error deleting crop:", error);
       toast.error("Failed to delete crop");
     } finally {
@@ -236,7 +253,7 @@ const MyCrops = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CalendarIcon className="w-4 h-4" />
                         <span>
-                          Planted: {new Date(crop.planting_date).toLocaleDateString()}
+                          Planted: {formatDateOnly(crop.planting_date)}
                         </span>
                       </div>
                     )}
@@ -244,7 +261,7 @@ const MyCrops = () => {
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CalendarIcon className="w-4 h-4" />
                         <span>
-                          Planned: {new Date(crop.planned_date).toLocaleDateString()}
+                          Planned: {formatDateOnly(crop.planned_date)}
                         </span>
                       </div>
                     )}
@@ -332,121 +349,14 @@ const MyCrops = () => {
                 </div>
               </div>
 
-              {/* Summary */}
-              {selectedCrop.recommendations?.summary && (
-                <Alert>
-                  <AlertDescription>{selectedCrop.recommendations.summary}</AlertDescription>
-                </Alert>
-              )}
-
-              {/* Actions */}
-              {selectedCrop.recommendations?.actions && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Top Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ol className="space-y-2">
-                      {selectedCrop.recommendations.actions.map((action: string, idx: number) => (
-                        <li key={idx} className="flex gap-2">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                            {idx + 1}
-                          </span>
-                          <p className="text-sm">{action}</p>
-                        </li>
-                      ))}
-                    </ol>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Weekly Calendar */}
-              {selectedCrop.recommendations?.calendar && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CalendarIcon className="w-5 h-5" />
-                      4-Week Plan
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {selectedCrop.recommendations.calendar.map((week: any) => (
-                        <div key={week.week} className="border-l-2 border-primary pl-4">
-                          <p className="font-semibold mb-2">Week {week.week}</p>
-                          <ul className="space-y-1">
-                            {week.tasks.map((task: string, idx: number) => {
-                              const isMedicineTask = task.toLowerCase().includes("spray") ||
-                                task.toLowerCase().includes("pesticide") ||
-                                task.toLowerCase().includes("fungicide") ||
-                                task.toLowerCase().includes("medicine") ||
-                                task.toLowerCase().includes("apply") ||
-                                task.toLowerCase().includes("chemical");
-                              return (
-                                <li
-                                  key={idx}
-                                  className={`text-sm ${isMedicineTask ? "text-green-600 font-medium" : "text-muted-foreground"}`}
-                                >
-                                  • {task}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Risks */}
-              {selectedCrop.recommendations?.risks && selectedCrop.recommendations.risks.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Risk Assessment</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {selectedCrop.recommendations.risks.map((risk: any, idx: number) => (
-                      <Alert key={idx}>
-                        <AlertDescription>
-                          <div className="flex items-start gap-2 justify-between mb-2">
-                            <Badge variant="outline" className={
-                              risk.severity === "Low" ? "text-green-600" :
-                              risk.severity === "Moderate" ? "text-yellow-600" :
-                              "text-red-600"
-                            }>
-                              {risk.severity}
-                            </Badge>
-                            <Badge variant="secondary">{risk.type}</Badge>
-                          </div>
-                          <p className="text-sm mb-1">{risk.description}</p>
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-medium">Mitigation:</span> {risk.mitigation}
-                          </p>
-                        </AlertDescription>
-                      </Alert>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Soil Amendments */}
-              {selectedCrop.recommendations?.soilAmendments && selectedCrop.recommendations.soilAmendments.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Soil Amendments</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {selectedCrop.recommendations.soilAmendments.map((amendment: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="text-primary">•</span>
-                          <span className="text-sm">{amendment}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
+              {selectedRecommendation ? (
+                <RecommendationDisplay
+                  recommendation={selectedRecommendation}
+                  fallbackStartDate={legacyPlanStart(selectedCrop)}
+                  startLabel={planStartLabel(selectedCrop, selectedRecommendation)}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">No recommendation was saved for this crop.</p>
               )}
             </div>
           )}

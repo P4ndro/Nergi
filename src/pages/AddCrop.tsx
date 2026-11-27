@@ -1,13 +1,4 @@
-import { useState } from "react";
-// PDF parsing for soil report
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - pdfjs provides its own types
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - vite will resolve the worker url
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker?url";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,18 +13,30 @@ import { toast } from "sonner";
 import CropSearch from "@/components/CropSearch";
 import RecommendationDisplay from "@/components/RecommendationDisplay";
 import Navbar from "@/components/Navbar";
-import { fetchWeatherData, type WeatherData } from "@/lib/weather-api";
+import { fetchWeatherData, getMockWeatherData, type WeatherData } from "@/lib/weather-api";
+import { computePlanStartDate, parseStoredRecommendation, type Recommendation } from "@/lib/recommendation";
 
-const DEFAULT_WEATHER_DATA: WeatherData = {
-  humidity: 70,
-  rainfall: 30,
-  tempMin: 15,
-  tempMax: 25,
-  currentTemp: 20,
-  windSpeed: 5,
-  description: "Partly cloudy",
-  forecast: [],
-};
+// pdf.js is large, so it's only loaded when someone actually uploads a PDF.
+async function extractPdfText(file: File): Promise<string> {
+  const [pdfjsLib, worker] = await Promise.all([
+    import("pdfjs-dist"),
+    import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+  ]);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default;
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let text = "";
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
+    text += `\n\n[Page ${pageNum}]\n` + pageText;
+  }
+  return text;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 const AddCrop = () => {
   const navigate = useNavigate();
@@ -55,7 +58,12 @@ const AddCrop = () => {
   const [chemicalName, setChemicalName] = useState("");
   const [chemicalDate, setChemicalDate] = useState("");
   const [loading, setLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState<any>(null);
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+
+  // A recommendation only applies to the details it was generated for.
+  useEffect(() => {
+    setRecommendation(null);
+  }, [selectedCrop, status, plantingDate, plannedDate, plantingMethod]);
 
   const preprocessImageForOCR = (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -105,17 +113,7 @@ const AddCrop = () => {
     try {
       // Parse PDF
       if (file.type === "application/pdf") {
-        const arrayBuffer = await file.arrayBuffer();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pdf = await (pdfjsLib as any).getDocument({ data: arrayBuffer }).promise;
-        let text = "";
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const content = await page.getTextContent();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pageText = content.items.map((i: any) => (i.str || "")).join(" ");
-          text += `\n\n[Page ${pageNum}]\n` + pageText;
-        }
+        const text = await extractPdfText(file);
         const trimmed = text.slice(0, 100000);
         setSoilReportText(trimmed);
         if (trimmed.length > 0) toast.success("Parsed soil report (PDF)");
@@ -193,9 +191,20 @@ const AddCrop = () => {
       return;
     }
 
+    const area = parseFloat(areaValue);
+    if (!Number.isFinite(area) || area <= 0) {
+      toast.error("Please enter the area as a number greater than 0");
+      return;
+    }
+
+    if (chemicalUse === "yes" && (!chemicalName.trim() || !chemicalDate)) {
+      toast.error("Please enter the chemical name and application date");
+      return;
+    }
+
     // Basic eligibility check for report (optional but recommended)
     if (soilReportFile) {
-      const allowed = ["application/pdf", "text/plain", "text/csv"]; // images allowed via accept, but we don't OCR yet
+      const allowed = ["application/pdf", "text/plain", "text/csv"]; // images are read with OCR
       const isAllowed = allowed.includes(soilReportFile.type) || soilReportFile.type.startsWith("image/");
       if (!isAllowed) {
         toast.error("Unsupported file type. Upload PDF, text, CSV, or image.");
@@ -222,9 +231,9 @@ const AddCrop = () => {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (!profile) throw new Error("Profile not found");
+      if (!profile) throw new Error("Your profile could not be loaded. Try signing out and back in.");
 
       // Soil data: If user uploaded a report, tell AI to use ONLY the report
       // Otherwise use generic defaults
@@ -246,17 +255,16 @@ const AddCrop = () => {
 
       // Fetch real weather data from WeatherAPI
       const hasLocation = profile.location_lat != null && profile.location_lon != null;
-      let weatherData: WeatherData | null;
+      let weatherData: WeatherData;
       if (hasLocation) {
         toast.info("Fetching weather data...");
         weatherData = await fetchWeatherData(profile.location_lat, profile.location_lon);
+        if (weatherData.isEstimate) {
+          toast.warning("Live weather is unavailable right now, so general estimates will be used.");
+        }
       } else {
-        toast.info("No location selected. Using general weather estimates.");
-        weatherData = DEFAULT_WEATHER_DATA;
-      }
-      
-      if (!weatherData) {
-        throw new Error("Failed to fetch weather data");
+        toast.info("No location set, so general weather estimates will be used.");
+        weatherData = getMockWeatherData();
       }
       const cropData = {
         cropName: selectedCrop,
@@ -264,7 +272,7 @@ const AddCrop = () => {
         status,
         plantingDate,
         plannedDate,
-        areaValue: parseFloat(areaValue),
+        areaValue: area,
         areaUnit,
         plantingMethod,
         chemicalUse: chemicalUse === "yes",
@@ -285,7 +293,8 @@ const AddCrop = () => {
           soilData,
           weatherData,
           location,
-          soilReportText: soilReportText || null
+          soilReportText: soilReportText || null,
+          planStartDate: computePlanStartDate(status, plannedDate),
         }
       });
 
@@ -304,11 +313,13 @@ const AddCrop = () => {
         throw error;
       }
 
-      setRecommendation(data);
+      const parsed = parseStoredRecommendation(data);
+      if (!parsed) throw new Error("The recommendation service returned an unexpected response.");
+      setRecommendation(parsed);
       toast.success("Recommendation generated!");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error getting recommendation:", error);
-      toast.error(error.message || "Failed to get recommendation");
+      toast.error(errorMessage(error, "Failed to get recommendation"));
       setFormHidden(false);
     } finally {
       setLoading(false);
@@ -343,7 +354,7 @@ const AddCrop = () => {
           field_name: fieldName || null,
           notes: notes || null,
           suitability_verdict: recommendation.verdict,
-          recommendations: recommendation
+          recommendations: JSON.parse(JSON.stringify(recommendation)),
         })
         .select()
         .single();
@@ -355,7 +366,7 @@ const AddCrop = () => {
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
-            soil_report_data: recommendation.soilReportSummary,
+            soil_report_data: JSON.parse(JSON.stringify(recommendation.soilReportSummary)),
             soil_report_date: new Date().toISOString(),
             soil_report_location: fieldName || null
           })
@@ -363,8 +374,6 @@ const AddCrop = () => {
 
         if (profileError) {
           console.error("Error saving soil report to profile:", profileError);
-        } else {
-          console.log("Soil report data saved to profile");
         }
       }
 
@@ -380,14 +389,17 @@ const AddCrop = () => {
             reason: "Pre-planting treatment"
           });
 
-        if (chemError) console.error("Error saving chemical:", chemError);
+        if (chemError) {
+          console.error("Error saving chemical:", chemError);
+          toast.warning("The crop was saved, but the chemical record could not be saved.");
+        }
       }
 
       toast.success("Crop saved successfully! View your recommendations below.");
       navigate("/my-crops?open=true");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error saving crop:", error);
-      toast.error(error.message || "Failed to save crop");
+      toast.error(errorMessage(error, "Failed to save crop"));
     } finally {
       setLoading(false);
     }
@@ -487,7 +499,7 @@ const AddCrop = () => {
             {/* Status */}
             <div className="space-y-2">
               <Label>Status</Label>
-              <RadioGroup value={status} onValueChange={(v: any) => setStatus(v)}>
+              <RadioGroup value={status} onValueChange={(v) => setStatus(v as "planned" | "planted")}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="planned" id="planned" />
                   <Label htmlFor="planned" className="font-normal cursor-pointer">
@@ -541,7 +553,7 @@ const AddCrop = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit">Unit</Label>
-                <Select value={areaUnit} onValueChange={(v: any) => setAreaUnit(v)}>
+                <Select value={areaUnit} onValueChange={(v) => setAreaUnit(v as "m2" | "ha")}>
                   <SelectTrigger id="unit">
                     <SelectValue />
                   </SelectTrigger>
@@ -556,7 +568,7 @@ const AddCrop = () => {
             {/* Planting Method */}
             <div className="space-y-2">
               <Label htmlFor="method">Planting Method</Label>
-              <Select value={plantingMethod} onValueChange={(v: any) => setPlantingMethod(v)}>
+              <Select value={plantingMethod} onValueChange={(v) => setPlantingMethod(v as "direct_seed" | "transplant")}>
                 <SelectTrigger id="method">
                   <SelectValue />
                 </SelectTrigger>
@@ -568,22 +580,20 @@ const AddCrop = () => {
             </div>
 
             {/* Field Name */}
-            {status === "planted" && (
-              <div className="space-y-2">
-                <Label htmlFor="fieldName">Field/Location Name (optional)</Label>
-                <Input
-                  id="fieldName"
-                  placeholder="e.g., North Field"
-                  value={fieldName}
-                  onChange={(e) => setFieldName(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="fieldName">Field/Location Name (optional)</Label>
+              <Input
+                id="fieldName"
+                placeholder="e.g., North Field"
+                value={fieldName}
+                onChange={(e) => setFieldName(e.target.value)}
+              />
+            </div>
 
             {/* Chemical Use */}
             <div className="space-y-2">
               <Label>Recent chemical/pesticide use?</Label>
-              <RadioGroup value={chemicalUse} onValueChange={(v: any) => setChemicalUse(v)}>
+              <RadioGroup value={chemicalUse} onValueChange={(v) => setChemicalUse(v as "yes" | "no")}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="no" id="chem-no" />
                   <Label htmlFor="chem-no" className="font-normal cursor-pointer">
@@ -687,7 +697,10 @@ const AddCrop = () => {
         {/* Display Recommendation */}
         {recommendation && (
           <>
-            <RecommendationDisplay recommendation={recommendation} />
+            <RecommendationDisplay
+              recommendation={recommendation}
+              startLabel={status === "planned" ? "Planting day" : "Plan starts"}
+            />
             
             {/* Save Crop Button - Prominent CTA */}
             <Card className="mt-6 border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
