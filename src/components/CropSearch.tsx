@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CropSearchProps {
   selectedCrop: string;
@@ -18,6 +19,7 @@ interface CropOption {
 }
 
 const CropSearch = ({ selectedCrop, onSelectCrop }: CropSearchProps) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<CropOption[]>([]);
   const [allCrops, setAllCrops] = useState<CropOption[]>([]);
@@ -94,13 +96,13 @@ const CropSearch = ({ selectedCrop, onSelectCrop }: CropSearchProps) => {
 
   return (
     <div className="space-y-3">
-      <Label htmlFor="crop-search">Search Crop</Label>
+      <Label htmlFor="crop-search">{t("cs_search_label")}</Label>
       <div className="relative">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
           id="crop-search"
           className="pl-9"
-          placeholder="Type to search crops..."
+          placeholder={t("cs_placeholder")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -112,7 +114,7 @@ const CropSearch = ({ selectedCrop, onSelectCrop }: CropSearchProps) => {
       {(searchTerm && searchTerm.trim().length > 0) && (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            {"Matching crops:"}
+            {t("cs_matching")}
           </p>
           <div className="flex flex-wrap gap-2">
             {/* Allow free-text selection */}
@@ -121,7 +123,7 @@ const CropSearch = ({ selectedCrop, onSelectCrop }: CropSearchProps) => {
               className="cursor-pointer hover:bg-primary/10"
               onClick={() => handleSelectCrop(searchTerm.trim())}
             >
-              Use "{searchTerm.trim()}"
+              {t("cs_use", { name: searchTerm.trim() })}
             </Badge>
             {suggestions.map((crop) => (
               <Badge
@@ -140,7 +142,7 @@ const CropSearch = ({ selectedCrop, onSelectCrop }: CropSearchProps) => {
       {selectedCrop && (
         <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
           <p className="text-sm">
-            <span className="font-medium text-primary">Selected:</span> {selectedCrop}
+            <span className="font-medium text-primary">{t("cs_selected")}</span> {selectedCrop}
           </p>
         </div>
       )}

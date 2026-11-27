@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { addDays, differenceInCalendarDays, format, startOfDay } from "date-fns";
+import { addDays, differenceInCalendarDays, format as formatDate, startOfDay } from "date-fns";
+import { useTranslation } from "react-i18next";
+import { dateLocale, longDatePattern, shortDatePattern } from "@/i18n";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  CATEGORY_LABELS,
   CATEGORY_STYLES,
   type PlanWeek,
   weekRange,
@@ -13,11 +14,17 @@ import {
 interface PlanCalendarProps {
   weeks: PlanWeek[];
   startDate: Date;
-  /** Label for the first day, e.g. "Planting day" when week 1 starts on the planting date. */
-  startLabel?: string;
+  /** Whether week 1 starts on the planting day (shown in the legend). */
+  startsOnPlantingDay?: boolean;
 }
 
-const PlanCalendar = ({ weeks, startDate, startLabel = "Plan starts" }: PlanCalendarProps) => {
+const PlanCalendar = ({ weeks, startDate, startsOnPlantingDay = false }: PlanCalendarProps) => {
+  const { t } = useTranslation();
+  const locale = dateLocale();
+  const format = (date: Date, pattern: string) => formatDate(date, pattern, { locale });
+  const SHORT = shortDatePattern();
+  const LONG = longDatePattern();
+  const startLabel = startsOnPlantingDay ? t("plan_planting_day") : t("plan_starts");
   const start = startOfDay(startDate);
   const totalWeeks = weeks.length > 0 ? Math.max(...weeks.map((w) => w.week)) : 0;
   const planEnd = addDays(start, totalWeeks * 7 - 1);
@@ -51,6 +58,7 @@ const PlanCalendar = ({ weeks, startDate, startLabel = "Plan starts" }: PlanCale
             selected={selectedDate}
             onSelect={setSelectedDate}
             month={month}
+            locale={locale}
             onMonthChange={setMonth}
             className="rounded-md border"
             modifiers={{
@@ -65,11 +73,11 @@ const PlanCalendar = ({ weeks, startDate, startLabel = "Plan starts" }: PlanCale
           <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-3 w-3 rounded-sm bg-primary/10 border border-primary/20" />
-              4-week plan
+              {t("plan_legend")}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-3 w-3 rounded-sm ring-2 ring-primary ring-inset" />
-              {startLabel} ({format(start, "MMM d")})
+              {startLabel} ({format(start, SHORT)})
             </span>
           </div>
         </div>
@@ -78,10 +86,10 @@ const PlanCalendar = ({ weeks, startDate, startLabel = "Plan starts" }: PlanCale
           {selectedWeek ? (
             <>
               <h3 className="font-semibold">
-                Week {selectedWeek.week}
+                {t("plan_week", { n: selectedWeek.week })}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  {format(weekRange(start, selectedWeek.week).from, "MMM d")} –{" "}
-                  {format(weekRange(start, selectedWeek.week).to, "MMM d, yyyy")}
+                  {format(weekRange(start, selectedWeek.week).from, SHORT)} –{" "}
+                  {format(weekRange(start, selectedWeek.week).to, LONG)}
                 </span>
               </h3>
               {selectedWeek.tasks.length > 0 ? (
@@ -89,22 +97,20 @@ const PlanCalendar = ({ weeks, startDate, startLabel = "Plan starts" }: PlanCale
                   {selectedWeek.tasks.map((task, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm">
                       <Badge variant="outline" className={cn("shrink-0 font-normal", CATEGORY_STYLES[task.category])}>
-                        {CATEGORY_LABELS[task.category]}
+                        {t(`cat_${task.category}`)}
                       </Badge>
                       <span className="pt-0.5">{task.text}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-sm text-muted-foreground">No tasks listed for this week.</p>
+                <p className="mt-2 text-sm text-muted-foreground">{t("plan_no_tasks")}</p>
               )}
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              {selectedDate
-                ? `${format(selectedDate, "MMMM d, yyyy")} is outside the plan. `
-                : ""}
-              The plan runs {format(start, "MMM d")} – {format(planEnd, "MMM d, yyyy")}. Pick a highlighted date or a week below.
+              {selectedDate ? `${t("plan_outside", { date: format(selectedDate, LONG) })} ` : ""}
+              {t("plan_range", { from: format(start, SHORT), to: format(planEnd, LONG) })}
             </p>
           )}
         </div>
@@ -123,9 +129,9 @@ const PlanCalendar = ({ weeks, startDate, startLabel = "Plan starts" }: PlanCale
                 selectedWeekNumber === week.week && "border-primary bg-primary/10",
               )}
             >
-              <span className="font-medium">Week {week.week}</span>
+              <span className="font-medium">{t("plan_week", { n: week.week })}</span>
               <span className="ml-1 text-muted-foreground">
-                {format(from, "MMM d")}–{format(to, "MMM d")}
+                {format(from, SHORT)}–{format(to, SHORT)}
               </span>
             </button>
           );

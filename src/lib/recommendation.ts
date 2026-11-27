@@ -63,17 +63,6 @@ export interface Recommendation {
   weatherIsEstimate?: boolean;
 }
 
-export const CATEGORY_LABELS: Record<TaskCategory, string> = {
-  soil: "Soil prep",
-  planting: "Planting",
-  watering: "Watering",
-  fertilizing: "Fertilizing",
-  monitoring: "Monitoring",
-  protection: "Pest & disease",
-  harvest: "Harvest",
-  other: "Other",
-};
-
 export const CATEGORY_STYLES: Record<TaskCategory, string> = {
   soil: "bg-amber-100 text-amber-900 border-amber-200",
   planting: "bg-emerald-100 text-emerald-900 border-emerald-200",

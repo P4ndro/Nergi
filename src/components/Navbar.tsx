@@ -39,7 +39,7 @@ const Navbar = () => {
 
   return (
     <header className="border-b border-border bg-card/80 backdrop-blur">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
         <button 
           onClick={() => navigate("/")}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -47,28 +47,26 @@ const Navbar = () => {
           <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
             <Leaf className="w-6 h-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-primary">{t('brand')}</h1>
+          <span className="text-xl sm:text-2xl font-bold text-primary">{t('brand')}</span>
         </button>
         
-        <div className="flex items-center gap-3">
-          <div className="hidden md:block">
-            <LanguageSwitcher />
-          </div>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <LanguageSwitcher />
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full h-12 w-12">
+                <Button variant="ghost" size="icon" className="rounded-full h-12 w-12" aria-label={t("my_account")}>
                   <CircleUserRound className="w-8 h-8 text-primary" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("my_account")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                   {t('dashboard')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/my-crops")}>
-                  My Crops
+                  {t("my_crops")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/add-crop")}>
                   {t('add_crop')}

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { currentLanguage } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,7 @@ function errorMessage(error: unknown, fallback: string): string {
 
 const AddCrop = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [selectedCrop, setSelectedCrop] = useState<string>("");
   const [variety, setVariety] = useState("");
   const [status, setStatus] = useState<"planned" | "planted">("planned");
@@ -116,7 +119,7 @@ const AddCrop = () => {
         const text = await extractPdfText(file);
         const trimmed = text.slice(0, 100000);
         setSoilReportText(trimmed);
-        if (trimmed.length > 0) toast.success("Parsed soil report (PDF)");
+        if (trimmed.length > 0) toast.success(t("t_pdf_ok"));
         return;
       }
 
@@ -126,16 +129,16 @@ const AddCrop = () => {
         const text = await file.text();
         const trimmed = text.slice(0, 100000);
         setSoilReportText(trimmed);
-        if (trimmed.length > 0) toast.success("Parsed soil report (text)");
+        if (trimmed.length > 0) toast.success(t("t_text_ok"));
         return;
       }
 
       // OCR for screenshots/images (basic EN). Add KA by changing lang below
       if (file.type.startsWith("image/")) {
-        toast.message("Running OCR on image... this may take a moment");
+        toast.message(t("t_ocr_running"));
         const pre = await preprocessImageForOCR(file);
         const Tesseract = await import("tesseract.js");
-        const { data } = await Tesseract.default.recognize(pre, "eng");
+        const { data } = await Tesseract.default.recognize(pre, "eng+kat");
         let ocrText = (data?.text || "").trim();
         // Fallback to OCR.space with table mode if Tesseract is too weak
         const OCR_KEY = import.meta.env.VITE_OCR_SPACE_API_KEY as string | undefined;
@@ -163,42 +166,42 @@ const AddCrop = () => {
         const trimmed = ocrText.slice(0, 100000);
         setSoilReportText(trimmed);
         if (trimmed.length > 0) {
-          toast.success("Parsed soil report (image OCR)");
+          toast.success(t("t_ocr_ok"));
         } else {
-          toast.error("Could not read text from image. Try uploading a PDF or text file.");
+          toast.error(t("t_ocr_failed"));
         }
         return;
       }
     } catch (err) {
       console.error("Failed to read soil report:", err);
-      toast.error("Failed to read soil report file");
+      toast.error(t("t_read_failed"));
     }
   };
 
   const handleGetRecommendation = async () => {
     if (!selectedCrop) {
-      toast.error("Please select a crop first");
+      toast.error(t("t_select_crop"));
       return;
     }
 
     if (status === "planned" && !plannedDate) {
-      toast.error("Please enter planned planting date");
+      toast.error(t("t_planned_date"));
       return;
     }
 
     if (status === "planted" && !plantingDate) {
-      toast.error("Please enter planting date");
+      toast.error(t("t_planting_date"));
       return;
     }
 
     const area = parseFloat(areaValue);
     if (!Number.isFinite(area) || area <= 0) {
-      toast.error("Please enter the area as a number greater than 0");
+      toast.error(t("t_area"));
       return;
     }
 
     if (chemicalUse === "yes" && (!chemicalName.trim() || !chemicalDate)) {
-      toast.error("Please enter the chemical name and application date");
+      toast.error(t("t_chem"));
       return;
     }
 
@@ -207,11 +210,11 @@ const AddCrop = () => {
       const allowed = ["application/pdf", "text/plain", "text/csv"]; // images are read with OCR
       const isAllowed = allowed.includes(soilReportFile.type) || soilReportFile.type.startsWith("image/");
       if (!isAllowed) {
-        toast.error("Unsupported file type. Upload PDF, text, CSV, or image.");
+        toast.error(t("t_file_type"));
         return;
       }
       if (soilReportFile.size > 10 * 1024 * 1024) {
-        toast.error("File too large. Max 10MB.");
+        toast.error(t("t_file_size"));
         return;
       }
     }
@@ -233,7 +236,7 @@ const AddCrop = () => {
         .eq('id', user.id)
         .maybeSingle();
 
-      if (!profile) throw new Error("Your profile could not be loaded. Try signing out and back in.");
+      if (!profile) throw new Error(t("t_profile"));
 
       // Soil data: If user uploaded a report, tell AI to use ONLY the report
       // Otherwise use generic defaults
@@ -257,13 +260,13 @@ const AddCrop = () => {
       const hasLocation = profile.location_lat != null && profile.location_lon != null;
       let weatherData: WeatherData;
       if (hasLocation) {
-        toast.info("Fetching weather data...");
+        toast.info(t("t_fetching_weather"));
         weatherData = await fetchWeatherData(profile.location_lat, profile.location_lon);
         if (weatherData.isEstimate) {
-          toast.warning("Live weather is unavailable right now, so general estimates will be used.");
+          toast.warning(t("t_weather_estimate"));
         }
       } else {
-        toast.info("No location set, so general weather estimates will be used.");
+        toast.info(t("t_no_location"));
         weatherData = getMockWeatherData();
       }
       const cropData = {
@@ -295,6 +298,7 @@ const AddCrop = () => {
           location,
           soilReportText: soilReportText || null,
           planStartDate: computePlanStartDate(status, plannedDate),
+          language: currentLanguage(),
         }
       });
 
@@ -314,12 +318,12 @@ const AddCrop = () => {
       }
 
       const parsed = parseStoredRecommendation(data);
-      if (!parsed) throw new Error("The recommendation service returned an unexpected response.");
+      if (!parsed) throw new Error(t("t_bad_response"));
       setRecommendation(parsed);
-      toast.success("Recommendation generated!");
+      toast.success(t("t_rec_ok"));
     } catch (error) {
       console.error("Error getting recommendation:", error);
-      toast.error(errorMessage(error, "Failed to get recommendation"));
+      toast.error(errorMessage(error, t("t_rec_failed")));
       setFormHidden(false);
     } finally {
       setLoading(false);
@@ -328,7 +332,7 @@ const AddCrop = () => {
 
   const handleSaveCrop = async () => {
     if (!selectedCrop || !recommendation) {
-      toast.error("Please get a recommendation first");
+      toast.error(t("t_need_rec"));
       return;
     }
 
@@ -391,15 +395,15 @@ const AddCrop = () => {
 
         if (chemError) {
           console.error("Error saving chemical:", chemError);
-          toast.warning("The crop was saved, but the chemical record could not be saved.");
+          toast.warning(t("t_chem_not_saved"));
         }
       }
 
-      toast.success("Crop saved successfully! View your recommendations below.");
+      toast.success(t("t_saved"));
       navigate("/my-crops?open=true");
     } catch (error) {
       console.error("Error saving crop:", error);
-      toast.error(errorMessage(error, "Failed to save crop"));
+      toast.error(errorMessage(error, t("t_save_failed")));
     } finally {
       setLoading(false);
     }
@@ -412,13 +416,13 @@ const AddCrop = () => {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Dashboard
+          {t("ac_back")}
         </Button>
         <Card>
           <CardHeader>
-            <CardTitle>Add Crop</CardTitle>
+            <CardTitle>{t("ac_title")}</CardTitle>
             <CardDescription>
-              Search for your crop and provide details to get AI-powered recommendations
+              {t("ac_desc")}
             </CardDescription>
           </CardHeader>
           {!formHidden && (
@@ -431,7 +435,7 @@ const AddCrop = () => {
 
             {/* Soil Report Upload */}
             <div className="space-y-2">
-              <Label htmlFor="soilReport">Soil Lab Report (PDF preferred)</Label>
+              <Label htmlFor="soilReport">{t("ac_soil_label")}</Label>
               <Input
                 id="soilReport"
                 type="file"
@@ -439,7 +443,7 @@ const AddCrop = () => {
                 onChange={handleSoilReportChange}
               />
               {soilReportFile && (
-                <p className="text-xs text-muted-foreground">Selected: {soilReportFile.name}</p>
+                <p className="text-xs text-muted-foreground">{t("ac_soil_selected", { name: soilReportFile.name })}</p>
               )}
             {soilReportText && (
               <div className="rounded-md border bg-success/10 border-success/30 p-3 space-y-3">
@@ -449,16 +453,16 @@ const AddCrop = () => {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-success mb-1">
-                      Report successfully read! ({soilReportText.length} characters extracted)
+                      {t("ac_soil_read", { count: soilReportText.length })}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      AI will analyze this data when you click "Get AI Recommendation"
+                      {t("ac_soil_read_hint")}
                     </p>
                   </div>
                 </div>
                 
                 <div className="rounded bg-background/80 p-3 border">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Extracted text preview:</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">{t("ac_soil_preview")}</p>
                   <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
                     {soilReportText.slice(0, 200)}{soilReportText.length > 200 ? "..." : ""}
                   </p>
@@ -471,7 +475,7 @@ const AddCrop = () => {
                     className="w-full"
                     onClick={() => setShowFullPreview((v) => !v)}
                   >
-                    {showFullPreview ? '▲ Hide full text' : '▼ Show full extracted text'}
+                    {showFullPreview ? `▲ ${t("ac_soil_hide")}` : `▼ ${t("ac_soil_show")}`}
                   </Button>
                 )}
                 
@@ -487,10 +491,10 @@ const AddCrop = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="variety">Variety (optional)</Label>
+              <Label htmlFor="variety">{t("ac_variety")}</Label>
               <Input
                 id="variety"
-                placeholder="e.g., Golden Bantam"
+                placeholder={t("ac_variety_ph")}
                 value={variety}
                 onChange={(e) => setVariety(e.target.value)}
               />
@@ -498,18 +502,18 @@ const AddCrop = () => {
 
             {/* Status */}
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>{t("ac_status")}</Label>
               <RadioGroup value={status} onValueChange={(v) => setStatus(v as "planned" | "planted")}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="planned" id="planned" />
                   <Label htmlFor="planned" className="font-normal cursor-pointer">
-                    Planning to plant
+                    {t("ac_status_planned")}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="planted" id="planted" />
                   <Label htmlFor="planted" className="font-normal cursor-pointer">
-                    Already planted
+                    {t("ac_status_planted")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -518,7 +522,7 @@ const AddCrop = () => {
             {/* Dates */}
             {status === "planned" ? (
               <div className="space-y-2">
-                <Label htmlFor="plannedDate">Planned Planting Date</Label>
+                <Label htmlFor="plannedDate">{t("ac_planned_date")}</Label>
                 <Input
                   id="plannedDate"
                   type="date"
@@ -528,7 +532,7 @@ const AddCrop = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="plantingDate">Planting Date</Label>
+                <Label htmlFor="plantingDate">{t("ac_planting_date")}</Label>
                 <Input
                   id="plantingDate"
                   type="date"
@@ -541,7 +545,7 @@ const AddCrop = () => {
             {/* Area */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="area">Area</Label>
+                <Label htmlFor="area">{t("ac_area")}</Label>
                 <Input
                   id="area"
                   type="number"
@@ -552,14 +556,14 @@ const AddCrop = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
+                <Label htmlFor="unit">{t("ac_unit")}</Label>
                 <Select value={areaUnit} onValueChange={(v) => setAreaUnit(v as "m2" | "ha")}>
                   <SelectTrigger id="unit">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="m2">Square meters (m²)</SelectItem>
-                    <SelectItem value="ha">Hectares (ha)</SelectItem>
+                    <SelectItem value="m2">{t("ac_unit_m2")}</SelectItem>
+                    <SelectItem value="ha">{t("ac_unit_ha")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -567,24 +571,24 @@ const AddCrop = () => {
 
             {/* Planting Method */}
             <div className="space-y-2">
-              <Label htmlFor="method">Planting Method</Label>
+              <Label htmlFor="method">{t("ac_method")}</Label>
               <Select value={plantingMethod} onValueChange={(v) => setPlantingMethod(v as "direct_seed" | "transplant")}>
                 <SelectTrigger id="method">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direct_seed">Direct Seed</SelectItem>
-                  <SelectItem value="transplant">Transplant</SelectItem>
+                  <SelectItem value="direct_seed">{t("ac_method_direct_seed")}</SelectItem>
+                  <SelectItem value="transplant">{t("ac_method_transplant")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Field Name */}
             <div className="space-y-2">
-              <Label htmlFor="fieldName">Field/Location Name (optional)</Label>
+              <Label htmlFor="fieldName">{t("ac_field")}</Label>
               <Input
                 id="fieldName"
-                placeholder="e.g., North Field"
+                placeholder={t("ac_field_ph")}
                 value={fieldName}
                 onChange={(e) => setFieldName(e.target.value)}
               />
@@ -592,18 +596,18 @@ const AddCrop = () => {
 
             {/* Chemical Use */}
             <div className="space-y-2">
-              <Label>Recent chemical/pesticide use?</Label>
+              <Label>{t("ac_chem")}</Label>
               <RadioGroup value={chemicalUse} onValueChange={(v) => setChemicalUse(v as "yes" | "no")}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="no" id="chem-no" />
                   <Label htmlFor="chem-no" className="font-normal cursor-pointer">
-                    No
+                    {t("ac_no")}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes" id="chem-yes" />
                   <Label htmlFor="chem-yes" className="font-normal cursor-pointer">
-                    Yes
+                    {t("ac_yes")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -612,16 +616,16 @@ const AddCrop = () => {
             {chemicalUse === "yes" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="chemName">Chemical/Pesticide Name</Label>
+                  <Label htmlFor="chemName">{t("ac_chem_name")}</Label>
                   <Input
                     id="chemName"
-                    placeholder="Product name"
+                    placeholder={t("ac_chem_name_ph")}
                     value={chemicalName}
                     onChange={(e) => setChemicalName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="chemDate">Application Date</Label>
+                  <Label htmlFor="chemDate">{t("ac_chem_date")}</Label>
                   <Input
                     id="chemDate"
                     type="date"
@@ -634,10 +638,10 @@ const AddCrop = () => {
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes (optional)</Label>
+              <Label htmlFor="notes">{t("ac_notes")}</Label>
               <Textarea
                 id="notes"
-                placeholder="Any additional information..."
+                placeholder={t("ac_notes_ph")}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
@@ -655,15 +659,15 @@ const AddCrop = () => {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {soilReportText ? "Analyzing Soil Report..." : "Analyzing..."}
+                    {soilReportText ? t("ac_analyzing_report") : t("ac_analyzing")}
                   </>
                 ) : (
-                  "Get AI Recommendation"
+                  t("ac_get")
                 )}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Crop details, weather inputs, and any soil report text or selected location you provide are sent to Groq to generate this recommendation.
+              {t("ac_privacy")}
             </p>
           </CardContent>
           )}
@@ -674,14 +678,14 @@ const AddCrop = () => {
                   <Loader2 className="w-5 h-5 text-primary animate-spin mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="font-medium text-primary mb-2">
-                      AI is analyzing your soil report...
+                      {t("ac_ai_reading")}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Reading soil lab report ({soilReportText.length} characters) and generating precise recommendations based on actual values...
+                      {t("ac_ai_reading_body", { count: soilReportText.length })}
                     </p>
                     {soilReportText && (
                       <div className="mt-3 p-3 bg-background/80 rounded border text-xs">
-                        <p className="text-muted-foreground font-medium mb-1">Report preview:</p>
+                        <p className="text-muted-foreground font-medium mb-1">{t("ac_report_preview")}</p>
                         <p className="text-muted-foreground whitespace-pre-wrap">
                           {soilReportText.slice(0, 300)}...
                         </p>
@@ -699,7 +703,7 @@ const AddCrop = () => {
           <>
             <RecommendationDisplay
               recommendation={recommendation}
-              startLabel={status === "planned" ? "Planting day" : "Plan starts"}
+              startsOnPlantingDay={status === "planned" && recommendation.planStartDate === plannedDate}
             />
             
             {/* Save Crop Button - Prominent CTA */}
@@ -712,10 +716,10 @@ const AddCrop = () => {
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold mb-2">Save This Crop?</h3>
+                    <h3 className="text-2xl font-bold mb-2">{t("ac_save_title")}</h3>
                     <p className="text-muted-foreground max-w-md mx-auto">
-                      Save this crop with the AI recommendations to your dashboard. 
-                      {recommendation.soilReportSummary && " Your soil report data will be saved for future reference."}
+                      {t("ac_save_body")}
+                      {recommendation.soilReportSummary && ` ${t("ac_save_body_soil")}`}
                     </p>
                   </div>
                   <div className="flex gap-3 justify-center pt-2">
@@ -728,7 +732,7 @@ const AddCrop = () => {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
                     >
-                      Start Over
+                      {t("ac_start_over")}
                     </Button>
                     <Button
                       onClick={handleSaveCrop}
@@ -739,19 +743,19 @@ const AddCrop = () => {
                       {loading ? (
                         <>
                           <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Saving...
+                          {t("ac_saving")}
                         </>
                       ) : (
                         <>
                           <Leaf className="w-5 h-5 mr-2" />
-                          Save Crop & Recommendations
+                          {t("ac_save")}
                         </>
                       )}
                     </Button>
                   </div>
                   {recommendation.soilReportSummary && (
                     <p className="text-xs text-muted-foreground pt-2">
-                      ✓ Soil report data will be saved to your profile
+                      {t("ac_soil_saved_note")}
                     </p>
                   )}
                 </div>

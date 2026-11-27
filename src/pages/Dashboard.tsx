@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import Navbar from "@/components/Navbar";
 import type { Json } from "@/integrations/supabase/types";
 import { fetchWeatherData, type WeatherData } from "@/lib/weather-api";
 import { parseStoredRecommendation } from "@/lib/recommendation";
+import { dateLocale, longDatePattern } from "@/i18n";
 
 interface Profile {
   id: string;
@@ -31,9 +33,19 @@ interface SoilReportData {
   P_ppm?: number | null;
   K_ppm?: number | null;
   OM_percent?: number | null;
-  EC?: number | null;
   notes?: string | null;
 }
+
+const SoilValue = ({ label, value, unit }: { label: string; value: number | null | undefined; unit?: string }) =>
+  value === null || value === undefined ? null : (
+    <div className="space-y-1">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p className="text-2xl font-bold">
+        {value}
+        {unit && <span className="ml-1 text-xs font-normal text-muted-foreground">{unit}</span>}
+      </p>
+    </div>
+  );
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -49,27 +61,21 @@ const Dashboard = () => {
   const loadProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
       if (!user) {
         navigate("/auth");
         return;
       }
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
       if (error) throw error;
       setProfile(data);
     } catch (error) {
       console.error("Error loading profile:", error);
-      toast.error("Failed to load profile");
+      toast.error(t("dash_profile_failed"));
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, t]);
 
   const loadCrops = useCallback(async () => {
     try {
@@ -77,9 +83,9 @@ const Dashboard = () => {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('user_crops')
-        .select('status, recommendations')
-        .eq('user_id', user.id);
+        .from("user_crops")
+        .select("status, recommendations")
+        .eq("user_id", user.id);
 
       if (error) throw error;
       const active = (data ?? []).filter((crop) => crop.status !== "harvested");
@@ -121,35 +127,38 @@ const Dashboard = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Leaf className="w-12 h-12 text-primary animate-pulse mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading your dashboard...</p>
+          <p className="text-muted-foreground">{t("dash_loading")}</p>
         </div>
       </div>
     );
   }
+
+  const soilData = (profile?.soil_report_data ?? null) as SoilReportData | null;
+  const phGood = typeof soilData?.pH === "number" && soilData.pH >= 6.0 && soilData.pH <= 7.0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
       <Navbar />
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <p className="text-sm text-muted-foreground">{t('welcome')}, {profile?.name}</p>
-        </div>
+        {profile?.name && (
+          <div className="mb-6">
+            <p className="text-sm text-muted-foreground">
+              {t("welcome")}, {profile.name}
+            </p>
+          </div>
+        )}
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <MapPin className="w-5 h-5 text-primary" />
           <div className="min-w-0 flex-1">
             <p className="font-medium">
-              {hasLocation ? profile?.location_region || t('location_set') : "Location not set"}
+              {hasLocation ? profile?.location_region || t("location_set") : t("location_not_set")}
             </p>
-            {!hasLocation && (
-              <p className="text-sm text-muted-foreground">
-                Location is optional. Add one for local weather and recommendations.
-              </p>
-            )}
+            {!hasLocation && <p className="text-sm text-muted-foreground">{t("location_optional")}</p>}
           </div>
-          {hasLocation && <Badge variant="secondary">{t('active')}</Badge>}
+          {hasLocation && <Badge variant="secondary">{t("active")}</Badge>}
           <Button variant="outline" size="sm" onClick={() => setShowLocationSetup((show) => !show)}>
-            {showLocationSetup ? "Close" : hasLocation ? "Change location" : "Set location"}
+            {showLocationSetup ? t("close") : hasLocation ? t("location_change") : t("location_set_btn")}
           </Button>
         </div>
         {showLocationSetup && (
@@ -170,189 +179,126 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-primary" />
-                {t('add_crop')}
+                {t("add_crop")}
               </CardTitle>
-              <CardDescription>
-                Plan a new crop or record a planted one
-              </CardDescription>
+              <CardDescription>{t("dash_add_desc")}</CardDescription>
             </CardHeader>
           </Card>
 
-          <Card 
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/my-crops")}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Leaf className="w-5 h-5 text-success" />
+                {t("my_crops")}
+              </CardTitle>
+              <CardDescription>{t("dash_crops_desc")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{cropCount}</p>
+              <p className="text-sm text-muted-foreground">{t("active_crops")}</p>
+            </CardContent>
+          </Card>
+
+          <Card
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => navigate("/my-crops")}
           >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Leaf className="w-5 h-5 text-success" />
-                {t('my_crops')}
-              </CardTitle>
-              <CardDescription>
-                View and manage your crops
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{cropCount}</p>
-              <p className="text-sm text-muted-foreground">Active crops</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-warning" />
-                {t('alerts')}
+                {t("alerts")}
               </CardTitle>
-              <CardDescription>
-                From your saved crop recommendations
-              </CardDescription>
+              <CardDescription>{t("alerts_desc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{highRiskCount}</p>
-              <p className="text-sm text-muted-foreground">High-severity risks across your crops</p>
+              <p className="text-sm text-muted-foreground">{t("alerts_count_label")}</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Soil Status - Only show if user has uploaded a soil report */}
-        {profile?.soil_report_data && (() => {
-          const soilData = profile.soil_report_data as SoilReportData;
-          return (
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Soil Status{profile.location_region ? ` - ${profile.location_region}` : ""}
-                </CardTitle>
-                <CardDescription>
-                  From your soil report {profile.soil_report_location && `(${profile.soil_report_location})`}
-                  {profile.soil_report_date && ` - ${new Date(profile.soil_report_date).toLocaleDateString()}`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                  {/* pH Level */}
-                  {typeof soilData.pH === "number" && (
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">pH Level</p>
-                      <p className="text-2xl font-bold">{soilData.pH.toFixed(1)}</p>
-                      <Badge variant={
-                        soilData.pH >= 6.0 && soilData.pH <= 7.0 
-                          ? "secondary" 
-                          : "outline"
-                      }>
-                        {soilData.pH >= 6.0 && soilData.pH <= 7.0 ? "Good" : "Check"}
-                      </Badge>
-                    </div>
-                  )}
-                  
-                  {/* Nitrogen */}
-                  {soilData.N_ppm !== null && soilData.N_ppm !== undefined && (
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Nitrogen</p>
-                      <p className="text-2xl font-bold">{soilData.N_ppm}</p>
-                      <p className="text-xs text-muted-foreground">ppm</p>
-                    </div>
-                  )}
-                  
-                  {/* Phosphorus */}
-                  {soilData.P_ppm !== null && soilData.P_ppm !== undefined && (
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Phosphorus</p>
-                      <p className="text-2xl font-bold">{soilData.P_ppm}</p>
-                      <p className="text-xs text-muted-foreground">ppm</p>
-                    </div>
-                  )}
-                  
-                  {/* Potassium */}
-                  {soilData.K_ppm !== null && soilData.K_ppm !== undefined && (
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Potassium</p>
-                      <p className="text-2xl font-bold">{soilData.K_ppm}</p>
-                      <p className="text-xs text-muted-foreground">ppm</p>
-                    </div>
-                  )}
-                  
-                  {/* Organic Matter */}
-                  {soilData.OM_percent !== null && soilData.OM_percent !== undefined && (
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Organic Matter</p>
-                      <p className="text-2xl font-bold">{soilData.OM_percent}%</p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Notes from soil report if available */}
-                {soilData.notes && (
-                  <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <TrendingUp className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium">Analysis Notes</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {soilData.notes}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })()}
-        
-        {/* Placeholder if no soil report uploaded */}
-        {!profile?.soil_report_data && (
-          <Card className="mb-8 border-dashed">
-            <CardContent className="pt-6 pb-6 text-center">
-              <TrendingUp className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">No Soil Report Yet</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Upload a soil lab report when adding a crop to see your soil analysis here
-              </p>
-              <Button onClick={() => navigate("/add-crop")}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Crop with Soil Report
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
         {hasLocation && weather && (
-          <Card>
+          <Card className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CloudSun className="w-5 h-5 text-primary" />
-                Weather{profile?.location_region ? ` - ${profile.location_region}` : ""}
+                {t("weather")}
               </CardTitle>
-              <CardDescription>
-                {weather.isEstimate
-                  ? "Live weather is unavailable right now. These are general estimates, not your local forecast."
-                  : "Current conditions and the 7-day outlook"}
-              </CardDescription>
+              <CardDescription>{weather.isEstimate ? t("weather_estimate") : t("weather_live")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Now</p>
+                  <p className="text-sm text-muted-foreground">{t("weather_now")}</p>
                   <p className="text-2xl font-bold">{Math.round(weather.currentTemp)}°C</p>
                   <p className="text-xs text-muted-foreground">{weather.description}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">7-day range</p>
+                  <p className="text-sm text-muted-foreground">{t("weather_range")}</p>
                   <p className="text-2xl font-bold">
                     {Math.round(weather.tempMin)}° / {Math.round(weather.tempMax)}°
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Humidity</p>
+                  <p className="text-sm text-muted-foreground">{t("weather_humidity")}</p>
                   <p className="text-2xl font-bold">{weather.humidity}%</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Rain (7 days)</p>
+                  <p className="text-sm text-muted-foreground">{t("weather_rain")}</p>
                   <p className="text-2xl font-bold">{Math.round(weather.rainfall)} mm</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {soilData ? (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                {t("soil_status")}
+              </CardTitle>
+              <CardDescription>
+                {t("soil_from_report")}
+                {profile?.soil_report_location && ` (${profile.soil_report_location})`}
+                {profile?.soil_report_date &&
+                  ` · ${format(new Date(profile.soil_report_date), longDatePattern(), { locale: dateLocale() })}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+                {typeof soilData.pH === "number" && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">{t("ph_level")}</p>
+                    <p className="text-2xl font-bold">{soilData.pH.toFixed(1)}</p>
+                    <Badge variant={phGood ? "secondary" : "outline"}>{phGood ? t("ph_good") : t("ph_check")}</Badge>
+                  </div>
+                )}
+                <SoilValue label={t("nitrogen")} value={soilData.N_ppm} unit="ppm" />
+                <SoilValue label={t("phosphorus")} value={soilData.P_ppm} unit="ppm" />
+                <SoilValue label={t("potassium")} value={soilData.K_ppm} unit="ppm" />
+                <SoilValue label={t("organic_matter")} value={soilData.OM_percent} unit="%" />
+              </div>
+
+              {soilData.notes && (
+                <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <p className="font-medium">{t("analysis_notes")}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{soilData.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="mb-8 border-dashed">
+            <CardContent className="pt-6 pb-6 text-center">
+              <TrendingUp className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">{t("no_soil_title")}</h3>
+              <p className="text-sm text-muted-foreground mb-4">{t("no_soil_body")}</p>
+              <Button onClick={() => navigate("/add-crop")}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t("no_soil_cta")}
+              </Button>
             </CardContent>
           </Card>
         )}
