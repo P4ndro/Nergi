@@ -274,6 +274,11 @@ const en = {
   mc_chem_saved: "Chemical record added",
   mc_chem_failed: "Failed to save chemical record",
   mc_chem_reason: "Reason (optional)",
+  mc_notes: "Notes",
+  mc_notes_ph: "Anything to remember about this crop...",
+  mc_notes_save: "Save notes",
+  mc_notes_saved: "Notes saved",
+  mc_notes_failed: "Failed to save notes",
 };
 
 export default en;

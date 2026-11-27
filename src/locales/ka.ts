@@ -276,6 +276,11 @@ const ka: Record<keyof typeof en, string> = {
   mc_chem_saved: "ჩანაწერი დაემატა",
   mc_chem_failed: "ჩანაწერის შენახვა ვერ მოხერხდა",
   mc_chem_reason: "მიზეზი (არასავალდებულო)",
+  mc_notes: "შენიშვნები",
+  mc_notes_ph: "რისი დამახსოვრებაც გინდათ ამ კულტურაზე...",
+  mc_notes_save: "შენიშვნების შენახვა",
+  mc_notes_saved: "შენიშვნები შენახულია",
+  mc_notes_failed: "შენიშვნების შენახვა ვერ მოხერხდა",
 };
 
 export default ka;

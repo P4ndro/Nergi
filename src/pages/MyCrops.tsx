@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import RecommendationDisplay from "@/components/RecommendationDisplay";
 import ChemicalLog from "@/components/ChemicalLog";
+import CropNotes from "@/components/CropNotes";
 import { dateLocale, longDatePattern } from "@/i18n";
 import { computePlanStartDate, parseDateOnly, parseStoredRecommendation, toDateOnly } from "@/lib/recommendation";
 import type { Json } from "@/integrations/supabase/types";
@@ -40,6 +41,7 @@ interface UserCrop {
   area_value: number | null;
   area_unit: string | null;
   field_name: string | null;
+  notes: string | null;
   suitability_verdict: string | null;
   recommendations: Json | null;
   created_at: string;
@@ -317,6 +319,15 @@ const MyCrops = () => {
                   )}
                 </div>
               </div>
+
+              <CropNotes
+                key={selectedCrop.id}
+                cropId={selectedCrop.id}
+                initialNotes={selectedCrop.notes}
+                onSaved={(notes) =>
+                  setCrops((current) => current.map((c) => (c.id === selectedCrop.id ? { ...c, notes } : c)))
+                }
+              />
 
               {selectedRecommendation ? (
                 <RecommendationDisplay
